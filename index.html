@@ -1,0 +1,2560 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<meta http-equiv="cache-control" content="no-cache, no-store, must-revalidate" />
+<meta http-equiv="pragma" content="no-cache" />
+<meta http-equiv="expires" content="0" />
+<title>TPS Production Dashboard — Hogwarts Edition</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;500;600;700;800&family=Cormorant+Garamond:wght@400;500;600;700&family=Sarabun:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
+<style>
+:root{
+  --hp-bg:#1A1208;
+  --hp-bg-2:#231809;
+  --hp-panel:#2A1E0F;
+  --hp-panel-2:#33240F;
+  --hp-border:#5A3F1F;
+  --hp-border-warm:#8B6B3F;
+  --hp-gold:#D4B144;
+  --hp-gold-bright:#FFD700;
+  --hp-gold-dim:#9C7B2A;
+  --hp-red:#7A0F0E;
+  --hp-red-2:#A02C2C;
+  --hp-wax:#8B1A1A;
+  --hp-wax-dark:#5C0F0F;
+  --hp-green:#1E4A2C;
+  --hp-blue:#243763;
+  --hp-mustard:#D4B144;
+  --hp-parchment:#E8D5A8;
+  --hp-parchment-dark:#C9B27E;
+  --hp-sepia:#3E2A14;
+  --hp-text:#EDE6D5;
+  --hp-text-dim:#A89878;
+  --hp-text-mute:#6E5F45;
+  --hp-success:#3E8E50;
+  --hp-warn:#D4B144;
+  --hp-danger:#A02C2C;
+  --hp-info:#5C7AAE;
+  --hp-candle:#FFB347;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%;overflow-x:hidden}
+body{
+  font-family:'Sarabun','Cormorant Garamond',serif;
+  background:
+    radial-gradient(ellipse at top left, rgba(212,177,68,0.12) 0%, transparent 45%),
+    radial-gradient(ellipse at bottom right, rgba(139,26,26,0.10) 0%, transparent 50%),
+    radial-gradient(circle at 70% 30%, rgba(255,179,71,0.06) 0%, transparent 40%),
+    linear-gradient(180deg,#0F0904 0%, #1A1208 40%, #231809 100%);
+  color:var(--hp-text);
+  min-height:100vh;
+  overflow-x:hidden;
+  font-size:clamp(13px, 1vw, 15px);
+}
+/* PARCHMENT TEXTURE OVERLAY */
+body::before{
+  content:'';position:fixed;inset:0;pointer-events:none;z-index:0;
+  background-image:
+    /* candle sparkles */
+    radial-gradient(1.5px 1.5px at 22% 18%, rgba(255,215,0,0.6) 0, transparent 50%),
+    radial-gradient(1px 1px at 78% 62%, rgba(255,179,71,0.5) 0, transparent 50%),
+    radial-gradient(1px 1px at 41% 80%, rgba(255,215,0,0.4) 0, transparent 50%),
+    radial-gradient(1.5px 1.5px at 12% 88%, rgba(255,200,100,0.5) 0, transparent 50%),
+    radial-gradient(1px 1px at 88% 18%, rgba(255,215,0,0.4) 0, transparent 50%),
+    /* paper grain */
+    url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='200' height='200'><filter id='n'><feTurbulence baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 0.4 0 0 0 0 0.3 0 0 0 0 0.15 0 0 0 0.08 0'/></filter><rect width='100%25' height='100%25' filter='url(%23n)'/></svg>");
+  background-size: 900px 900px, 900px 900px, 900px 900px, 900px 900px, 900px 900px, 200px 200px;
+  opacity:0.7;
+  mix-blend-mode:screen;
+}
+/* FLOATING ENVELOPES */
+body::after{
+  content:'';position:fixed;inset:0;pointer-events:none;z-index:0;
+  background-image:
+    url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='40' height='28' viewBox='0 0 40 28'><path d='M2 4 L20 16 L38 4 L38 24 L2 24 Z' fill='none' stroke='%23D4B14430' stroke-width='1'/><path d='M2 4 L38 4 L20 16 Z' fill='none' stroke='%23D4B14420' stroke-width='1'/></svg>"),
+    url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='30' height='22' viewBox='0 0 30 22'><path d='M1 3 L15 12 L29 3 L29 19 L1 19 Z' fill='none' stroke='%238B6B3F25' stroke-width='1'/></svg>");
+  background-position: 8% 12%, 88% 78%;
+  background-repeat:no-repeat;
+  background-size:42px 30px, 32px 24px;
+  opacity:0.4;
+  animation: floatPaper 20s ease-in-out infinite;
+}
+@keyframes floatPaper{
+  0%,100%{transform:translateY(0)}
+  50%{transform:translateY(-12px)}
+}
+.app{display:flex;min-height:100vh;position:relative;z-index:1;width:100%;max-width:100vw}
+
+/* MOBILE TOGGLE */
+.menu-toggle{
+  display:none;position:fixed;top:12px;left:12px;z-index:1001;
+  width:44px;height:44px;border-radius:8px;
+  background:linear-gradient(135deg, var(--hp-panel), var(--hp-panel-2));
+  border:1px solid var(--hp-gold);color:var(--hp-gold);
+  font-size:20px;cursor:pointer;align-items:center;justify-content:center;
+}
+
+/* SIDEBAR — Hogwarts Letter Style */
+.sidebar{
+  width:clamp(220px, 18vw, 280px);flex-shrink:0;
+  background:
+    linear-gradient(180deg, rgba(42,30,15,0.97) 0%, rgba(26,18,8,0.99) 100%),
+    url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='150' height='150'><filter id='n'><feTurbulence baseFrequency='0.9' numOctaves='3'/><feColorMatrix values='0 0 0 0 0.5 0 0 0 0 0.35 0 0 0 0 0.15 0 0 0 0.4 0'/></filter><rect width='100%25' height='100%25' filter='url(%23n)'/></svg>");
+  border-right:2px solid var(--hp-border-warm);
+  padding:20px 0;
+  position:sticky;top:0;height:100vh;
+  overflow-y:auto;
+  box-shadow: 6px 0 40px rgba(0,0,0,0.6), inset -1px 0 0 rgba(212,177,68,0.15);
+  transition:transform 0.3s ease;
+  z-index:1000;
+  position:relative;
+}
+.sidebar::before{
+  content:'';position:absolute;top:0;right:0;bottom:0;width:1px;
+  background:linear-gradient(180deg, transparent 0%, var(--hp-gold-dim) 30%, var(--hp-gold) 50%, var(--hp-gold-dim) 70%, transparent 100%);
+  opacity:0.4;
+}
+.sidebar.collapsed{transform:translateX(-100%)}
+.brand{
+  padding:0 24px 20px 24px;
+  border-bottom:1px solid var(--hp-border);
+  margin-bottom:20px;
+  display:flex;flex-direction:column;align-items:center;gap:8px;
+  position:relative;
+}
+.brand::after{
+  content:'❦';position:absolute;bottom:-9px;left:50%;transform:translateX(-50%);
+  background:var(--hp-bg);padding:0 8px;color:var(--hp-gold);font-size:14px;
+}
+.brand-crest{
+  width:96px;height:96px;
+  position:relative;
+  filter:drop-shadow(0 4px 18px rgba(255,179,71,0.5)) drop-shadow(0 0 10px rgba(212,177,68,0.4));
+  animation: crestGlow 5s ease-in-out infinite;
+}
+@keyframes crestGlow{
+  0%,100%{filter:drop-shadow(0 4px 18px rgba(255,179,71,0.5)) drop-shadow(0 0 10px rgba(212,177,68,0.4))}
+  50%{filter:drop-shadow(0 4px 24px rgba(255,179,71,0.75)) drop-shadow(0 0 18px rgba(212,177,68,0.7))}
+}
+.brand-title{
+  font-family:'Cinzel',serif;font-weight:700;letter-spacing:2.5px;
+  font-size:15px;color:var(--hp-gold);text-align:center;
+  text-shadow:0 1px 2px rgba(0,0,0,0.8);
+}
+.brand-sub{
+  font-size:10px;color:var(--hp-text-dim);letter-spacing:1.5px;
+  font-family:'Cormorant Garamond',serif;font-style:italic;
+}
+
+.nav{display:flex;flex-direction:column;gap:4px;padding:0 12px}
+.nav-item{
+  display:flex;align-items:center;gap:12px;padding:11px 14px;
+  border-radius:5px;cursor:pointer;
+  color:var(--hp-text-dim);font-weight:500;font-size:13px;
+  transition: all 0.25s ease;
+  border:1px solid transparent;
+  font-family:'Cinzel',serif;letter-spacing:0.8px;
+  position:relative;
+}
+.nav-item:hover{
+  background:rgba(212,177,68,0.1);color:var(--hp-text);
+  border-color:rgba(212,177,68,0.3);
+  transform:translateX(2px);
+}
+.nav-item.active{
+  background:
+    linear-gradient(90deg, rgba(212,177,68,0.18), rgba(139,26,26,0.12)),
+    url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='40' height='40'><filter id='n'><feTurbulence baseFrequency='0.85' numOctaves='2'/><feColorMatrix values='0 0 0 0 0.55 0 0 0 0 0.4 0 0 0 0 0.2 0 0 0 0.1 0'/></filter><rect width='100%25' height='100%25' filter='url(%23n)'/></svg>");
+  color:var(--hp-gold);border-color:var(--hp-gold);
+  box-shadow:0 4px 14px rgba(212,177,68,0.2), inset 0 1px 0 rgba(212,177,68,0.2);
+}
+.nav-item.active::before{
+  content:'';position:absolute;left:-12px;top:50%;transform:translateY(-50%);
+  width:6px;height:6px;background:var(--hp-gold);border-radius:50%;
+  box-shadow:0 0 8px var(--hp-gold);
+}
+.nav-icon{width:22px;height:22px;display:flex;align-items:center;justify-content:center;font-size:17px}
+
+.sidebar-footer{padding:20px 18px;margin-top:20px;border-top:1px solid var(--hp-border)}
+.upload-zone{
+  border:1.5px dashed var(--hp-border-warm);
+  border-radius:4px;
+  padding:14px;text-align:center;
+  background:
+    linear-gradient(135deg, rgba(42,30,15,0.5), rgba(26,18,8,0.5)),
+    url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='60' height='44'><path d='M3 5 L30 24 L57 5 L57 39 L3 39 Z' fill='none' stroke='%23D4B14418' stroke-width='1'/></svg>");
+  background-position: center;
+  cursor:pointer;
+  transition:all 0.25s;
+  position:relative;
+}
+.upload-zone:hover{
+  border-color:var(--hp-gold);background-color:rgba(212,177,68,0.08);
+  box-shadow:0 0 12px rgba(212,177,68,0.2);
+}
+.upload-zone-title{font-family:'Cinzel',serif;font-size:12px;color:var(--hp-gold);letter-spacing:1.2px;margin-bottom:4px;text-transform:uppercase}
+.upload-zone-sub{font-size:10px;color:var(--hp-text-mute);font-family:'Cormorant Garamond',serif;font-style:italic}
+.upload-zone input{display:none}
+
+.btn{
+  display:inline-flex;align-items:center;gap:6px;
+  padding:9px 16px;border-radius:4px;cursor:pointer;
+  font-family:'Cinzel',serif;font-size:11px;font-weight:600;letter-spacing:1.2px;
+  border:1px solid;transition:all 0.2s;background:transparent;color:var(--hp-text);
+  text-transform:uppercase;
+  position:relative;
+}
+.btn::after{
+  content:'';position:absolute;inset:2px;border:1px solid currentColor;
+  border-radius:2px;opacity:0.3;pointer-events:none;
+}
+.btn-gold{border-color:var(--hp-gold);color:var(--hp-gold);background:linear-gradient(180deg, rgba(212,177,68,0.1), rgba(212,177,68,0.02))}
+.btn-gold:hover{background:linear-gradient(180deg, var(--hp-gold), #B8941E);color:#1A1208;box-shadow:0 4px 12px rgba(212,177,68,0.4)}
+.btn-red{border-color:var(--hp-red-2);color:var(--hp-red-2);background:linear-gradient(180deg, rgba(160,44,44,0.1), rgba(160,44,44,0.02))}
+.btn-red:hover{background:linear-gradient(180deg, var(--hp-red-2), var(--hp-wax-dark));color:#fff;box-shadow:0 4px 12px rgba(160,44,44,0.4)}
+.btn-block{width:100%;justify-content:center;margin-top:10px}
+
+/* MAIN */
+.main{flex:1;padding:clamp(14px, 2vw, 32px);min-width:0;max-width:100%;overflow-x:hidden}
+.topbar{
+  display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;
+  margin-bottom:18px;
+  width:100%;
+  max-width:100%;
+}
+.page-title-wrap{position:relative;padding-bottom:6px}
+.page-title-wrap::after{
+  content:'';position:absolute;bottom:0;left:0;width:60%;height:1px;
+  background:linear-gradient(90deg, var(--hp-gold), transparent);
+}
+.page-title-wrap h1{
+  font-family:'Cinzel',serif;font-size:clamp(22px, 2.2vw, 32px);font-weight:700;
+  background:linear-gradient(90deg, var(--hp-gold-bright), var(--hp-gold) 60%, #B8941E);
+  -webkit-background-clip:text;background-clip:text;color:transparent;
+  letter-spacing:2px;text-transform:uppercase;
+  text-shadow: 0 2px 4px rgba(0,0,0,0.5);
+}
+.page-title-wrap p{
+  color:var(--hp-text-dim);font-size:13px;margin-top:4px;
+  font-family:'Cormorant Garamond',serif;font-style:italic;letter-spacing:0.4px;
+}
+.topbar-actions{display:flex;gap:8px;flex-wrap:wrap}
+
+/* FILTERS BAR — like a Daily Prophet ribbon */
+.filters{
+  display:grid;grid-template-columns:repeat(auto-fit, minmax(120px, 1fr));gap:8px;
+  background:
+    linear-gradient(135deg, rgba(42,30,15,0.85), rgba(26,18,8,0.85)),
+    url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='80' height='80'><filter id='n'><feTurbulence baseFrequency='0.85' numOctaves='2'/><feColorMatrix values='0 0 0 0 0.55 0 0 0 0 0.4 0 0 0 0 0.2 0 0 0 0.08 0'/></filter><rect width='100%25' height='100%25' filter='url(%23n)'/></svg>");
+  border:1px solid var(--hp-border-warm);border-radius:6px;padding:12px;margin-bottom:16px;
+  backdrop-filter:blur(8px);
+  box-shadow: 0 2px 10px rgba(0,0,0,0.3), inset 0 1px 0 rgba(212,177,68,0.12);
+  position:relative;
+}
+.filters::before, .filters::after{
+  content:'';position:absolute;top:50%;width:14px;height:14px;
+  border-radius:50%;background:radial-gradient(circle, var(--hp-gold-dim) 0%, transparent 70%);
+  transform:translateY(-50%);opacity:0.4;
+}
+.filters::before{left:-7px} .filters::after{right:-7px}
+.filter-group{display:flex;flex-direction:column;gap:4px}
+.filter-group label{font-size:10px;font-family:'Cinzel',serif;letter-spacing:1.2px;color:var(--hp-gold);text-transform:uppercase}
+.filter-group select, .filter-group input{
+  background:rgba(15,10,4,0.7);
+  border:1px solid var(--hp-border-warm);
+  color:var(--hp-text);padding:7px 10px;border-radius:4px;
+  font-size:12px;font-family:'Sarabun',sans-serif;
+  transition: all 0.2s;
+}
+.filter-group select:hover, .filter-group input:hover{border-color:var(--hp-gold-dim)}
+.filter-group select:focus, .filter-group input:focus{outline:none;border-color:var(--hp-gold);box-shadow:0 0 0 2px rgba(212,177,68,0.15)}
+
+/* KPI CARDS */
+.kpi-grid{
+  display:grid;grid-template-columns:repeat(auto-fit, minmax(150px, 1fr));gap:12px;margin-bottom:16px;
+}
+.kpi-card{
+  background:
+    linear-gradient(140deg, rgba(42,30,15,0.95), rgba(34,24,12,0.85)),
+    url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='80' height='80'><filter id='n'><feTurbulence baseFrequency='0.85' numOctaves='2'/><feColorMatrix values='0 0 0 0 0.55 0 0 0 0 0.4 0 0 0 0 0.2 0 0 0 0.1 0'/></filter><rect width='100%25' height='100%25' filter='url(%23n)'/></svg>");
+  border:1px solid var(--hp-border-warm);border-radius:6px;
+  padding:clamp(10px, 1.2vw, 16px);
+  position:relative;overflow:hidden;
+  transition: all 0.3s ease;
+  box-shadow:
+    0 3px 10px rgba(0,0,0,0.4),
+    inset 0 1px 0 rgba(212,177,68,0.18),
+    inset 0 0 0 2px rgba(0,0,0,0.15);
+}
+.kpi-card::before{
+  content:'';position:absolute;top:0;left:0;right:0;height:3px;
+  background:linear-gradient(90deg, var(--hp-gold), var(--hp-gold-bright), var(--hp-gold-dim));
+  box-shadow:0 0 8px rgba(255,215,0,0.4);
+}
+/* small corner stamps */
+.kpi-card::after{
+  content:'';position:absolute;bottom:6px;right:6px;
+  width:8px;height:8px;border:1px solid var(--hp-gold-dim);
+  border-radius:50%;opacity:0.5;
+}
+.kpi-card:hover{transform:translateY(-3px);border-color:var(--hp-gold);box-shadow:0 6px 18px rgba(212,177,68,0.2), inset 0 1px 0 rgba(212,177,68,0.25)}
+.kpi-card.gryff::before{background:linear-gradient(90deg, var(--hp-red), var(--hp-gold))}
+.kpi-card.slyth::before{background:linear-gradient(90deg, var(--hp-green), #2A6840)}
+.kpi-card.raven::before{background:linear-gradient(90deg, var(--hp-blue), #5C7AAE)}
+.kpi-card.huff::before{background:linear-gradient(90deg, var(--hp-mustard), #B8941E)}
+.kpi-value{text-shadow:0 1px 3px rgba(0,0,0,0.6), 0 0 12px rgba(212,177,68,0.15)}
+.kpi-label{font-size:clamp(9px, 0.7vw, 11px);letter-spacing:1.2px;color:var(--hp-text-dim);font-family:'Cinzel',serif;text-transform:uppercase;margin-bottom:4px}
+.kpi-value{font-family:'Cinzel',serif;font-size:clamp(20px, 2vw, 30px);font-weight:700;color:var(--hp-gold);line-height:1.1}
+.kpi-sub{font-size:clamp(10px, 0.75vw, 11px);color:var(--hp-text-dim);margin-top:4px}
+
+/* CARDS / PANELS */
+.row{display:grid;gap:14px;margin-bottom:14px}
+.row.cols-2{grid-template-columns:1fr 1fr}
+.row.cols-3{grid-template-columns:repeat(3, 1fr)}
+.row.cols-2-1{grid-template-columns:2fr 1fr}
+@media(max-width:1100px){.row.cols-2,.row.cols-3,.row.cols-2-1{grid-template-columns:1fr}}
+
+.panel{
+  background:
+    linear-gradient(140deg, rgba(42,30,15,0.92), rgba(26,18,8,0.85)),
+    url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='100' height='100'><filter id='n'><feTurbulence baseFrequency='0.7' numOctaves='2'/><feColorMatrix values='0 0 0 0 0.6 0 0 0 0 0.45 0 0 0 0 0.2 0 0 0 0.15 0'/></filter><rect width='100%25' height='100%25' filter='url(%23n)'/></svg>");
+  border:1px solid var(--hp-border-warm);border-radius:6px;
+  padding:clamp(12px, 1.4vw, 20px);
+  position:relative;min-width:0;
+  box-shadow:
+    0 2px 12px rgba(0,0,0,0.4),
+    inset 0 0 0 1px rgba(212,177,68,0.08),
+    inset 0 1px 0 rgba(212,177,68,0.15);
+}
+/* corner ornaments — vintage letter feel */
+.panel::before, .panel::after{
+  content:'';position:absolute;width:18px;height:18px;
+  border:1px solid var(--hp-gold-dim);
+  pointer-events:none;
+}
+.panel::before{top:6px;left:6px;border-right:none;border-bottom:none}
+.panel::after{bottom:6px;right:6px;border-left:none;border-top:none}
+
+.panel-title{
+  font-family:'Cinzel',serif;font-size:clamp(12px, 1vw, 15px);letter-spacing:1.5px;
+  color:var(--hp-gold);margin-bottom:12px;
+  display:flex;align-items:center;gap:8px;
+  border-bottom:1px solid var(--hp-border-warm);padding-bottom:10px;
+  text-transform:uppercase;
+  text-shadow:0 1px 2px rgba(0,0,0,0.6);
+}
+.panel-title::before{
+  content:'❦';color:var(--hp-gold-bright);font-size:16px;
+  text-shadow:0 0 6px rgba(255,215,0,0.5);
+}
+.panel-sub{
+  font-size:11px;color:var(--hp-text-dim);margin-top:-8px;margin-bottom:12px;
+  font-family:'Cormorant Garamond',serif;font-style:italic;letter-spacing:0.3px;
+}
+
+/* WAX SEAL — for hero/important panels */
+.wax-seal{
+  position:absolute;top:-12px;right:18px;width:42px;height:42px;
+  background:radial-gradient(circle at 35% 30%, #C7321E 0%, var(--hp-wax) 50%, var(--hp-wax-dark) 100%);
+  border-radius:50%;
+  display:flex;align-items:center;justify-content:center;
+  font-family:'Cinzel',serif;font-size:11px;font-weight:800;
+  color:#3a0606;letter-spacing:0.5px;
+  box-shadow:0 4px 8px rgba(0,0,0,0.6), inset 0 -2px 4px rgba(0,0,0,0.4), inset 0 2px 4px rgba(255,200,180,0.3);
+  transform:rotate(-8deg);
+  z-index:5;
+}
+.wax-seal::before{
+  content:'';position:absolute;inset:4px;border-radius:50%;
+  border:1px dashed rgba(58,6,6,0.5);
+}
+
+/* CHART CONTAINER — responsive height with min/max */
+.chart-wrap{position:relative;height:clamp(220px, 30vh, 320px);width:100%;min-width:0}
+.chart-wrap.tall{height:clamp(280px, 40vh, 400px)}
+.chart-wrap.short{height:clamp(180px, 24vh, 240px)}
+
+/* TABLE — like a vintage ledger */
+.table-wrap{overflow:auto;border-radius:4px;border:1px solid var(--hp-border-warm);max-width:100%;background:rgba(15,10,4,0.4)}
+table{width:100%;border-collapse:collapse;font-size:clamp(10px, 0.85vw, 12px);min-width:max-content}
+table th{
+  background:linear-gradient(180deg, rgba(212,177,68,0.2), rgba(212,177,68,0.08));
+  color:var(--hp-gold);font-family:'Cinzel',serif;
+  letter-spacing:1px;text-align:left;padding:10px;font-size:clamp(9px, 0.75vw, 11px);
+  border-bottom:2px solid var(--hp-gold-dim);position:sticky;top:0;white-space:nowrap;
+  text-transform:uppercase;
+  text-shadow:0 1px 0 rgba(0,0,0,0.5);
+}
+table td{padding:8px 10px;border-bottom:1px solid rgba(90,63,31,0.4);color:var(--hp-text);white-space:nowrap}
+table tr:nth-child(even) td{background:rgba(212,177,68,0.025)}
+table tr:hover td{background:rgba(212,177,68,0.05)}
+
+.chip{
+  display:inline-flex;align-items:center;gap:5px;padding:3px 9px;border-radius:3px;
+  font-size:10px;font-weight:700;letter-spacing:0.6px;
+  border:1px solid;
+  font-family:'Cinzel',serif;text-transform:uppercase;
+}
+.chip.urgent{color:#FFB4B4;background:rgba(160,44,44,0.18);border-color:var(--hp-red-2)}
+.chip.medium{color:#FFD27A;background:rgba(212,177,68,0.18);border-color:var(--hp-gold)}
+.chip.low{color:#94C8A6;background:rgba(30,74,44,0.25);border-color:var(--hp-green)}
+.chip.doing{color:#A8C5FF;background:rgba(36,55,99,0.3);border-color:var(--hp-blue)}
+.chip.hold{color:#FFB4B4;background:rgba(160,44,44,0.18);border-color:var(--hp-red-2)}
+.chip.review{color:#FFD27A;background:rgba(212,177,68,0.18);border-color:var(--hp-gold)}
+.chip.approved{color:#94C8A6;background:rgba(30,74,44,0.3);border-color:var(--hp-green)}
+.chip.done{color:#94C8A6;background:rgba(62,142,80,0.35);border-color:var(--hp-success)}
+.chip.gray{color:var(--hp-text-dim);background:rgba(110,101,87,0.15);border-color:var(--hp-text-mute)}
+
+/* WORKLOAD PROGRESS — like a wand intensity meter */
+.workload-bar{
+  height:9px;background:rgba(15,10,4,0.7);border-radius:2px;overflow:hidden;
+  position:relative;margin-top:6px;border:1px solid var(--hp-border-warm);
+  box-shadow:inset 0 1px 2px rgba(0,0,0,0.4);
+}
+.workload-bar > span{display:block;height:100%;border-radius:1px;transition:width 0.4s;box-shadow:0 0 8px rgba(255,215,0,0.2)}
+.wl-free{background:linear-gradient(90deg, #4A6FA5, var(--hp-blue))}
+.wl-ok{background:linear-gradient(90deg, #2A6840, var(--hp-green))}
+.wl-warn{background:linear-gradient(90deg, var(--hp-gold), #B8941E)}
+.wl-danger{background:linear-gradient(90deg, var(--hp-red-2), var(--hp-red))}
+
+.person-card{
+  background:
+    linear-gradient(140deg, rgba(42,30,15,0.85), rgba(26,18,8,0.7)),
+    url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='60' height='60'><filter id='n'><feTurbulence baseFrequency='0.85' numOctaves='2'/><feColorMatrix values='0 0 0 0 0.55 0 0 0 0 0.4 0 0 0 0 0.2 0 0 0 0.1 0'/></filter><rect width='100%25' height='100%25' filter='url(%23n)'/></svg>");
+  border:1px solid var(--hp-border-warm);border-radius:5px;padding:12px;
+  box-shadow:0 2px 8px rgba(0,0,0,0.3);
+  transition:all 0.2s;
+}
+.person-card:hover{border-color:var(--hp-gold-dim);transform:translateY(-1px)}
+.person-card .name{font-family:'Cinzel',serif;color:var(--hp-gold);font-size:13px;letter-spacing:1.2px;text-transform:uppercase}
+.person-card .role{font-size:11px;color:var(--hp-text-dim);font-family:'Cormorant Garamond',serif;font-style:italic}
+.person-stats{display:flex;justify-content:space-between;font-size:11px;margin-top:8px;color:var(--hp-text-dim)}
+.person-stats b{color:var(--hp-text);font-family:'Cinzel',serif;font-size:13px}
+
+/* PAGE */
+.page{display:none;animation:fadeIn 0.4s ease}
+.page.active{display:block}
+@keyframes fadeIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+
+/* INSIGHT CARDS — letter-style */
+.insight-grid{display:grid;grid-template-columns:repeat(auto-fit, minmax(280px, 1fr));gap:14px}
+.insight-card{
+  background:
+    linear-gradient(140deg, rgba(42,30,15,0.92), rgba(26,18,8,0.85)),
+    url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='100' height='100'><filter id='n'><feTurbulence baseFrequency='0.7' numOctaves='2'/><feColorMatrix values='0 0 0 0 0.6 0 0 0 0 0.45 0 0 0 0 0.2 0 0 0 0.12 0'/></filter><rect width='100%25' height='100%25' filter='url(%23n)'/></svg>");
+  border:1px solid var(--hp-border-warm);border-radius:6px;padding:18px;
+  position:relative;overflow:hidden;
+  box-shadow:0 3px 12px rgba(0,0,0,0.4), inset 0 1px 0 rgba(212,177,68,0.12);
+}
+.insight-card::before, .insight-card::after{
+  content:'';position:absolute;width:14px;height:14px;
+  border:1px solid var(--hp-gold-dim);pointer-events:none;
+}
+.insight-card::before{top:5px;right:5px;border-left:none;border-bottom:none}
+.insight-card::after{bottom:5px;left:5px;border-right:none;border-top:none}
+.insight-card.crisis{border-left:5px solid var(--hp-red-2);background-blend-mode:normal}
+.insight-card.crisis::after{border-color:var(--hp-red-2)}
+.insight-card.warning{border-left:5px solid var(--hp-gold)}
+.insight-card.hero{border-left:5px solid var(--hp-success)}
+.insight-card.hero::after{border-color:var(--hp-success)}
+.insight-card.info{border-left:5px solid var(--hp-blue)}
+.insight-title{
+  font-family:'Cinzel',serif;color:var(--hp-gold);font-size:13px;letter-spacing:1.2px;
+  margin-bottom:10px;display:flex;align-items:center;gap:8px;text-transform:uppercase;
+  text-shadow:0 1px 2px rgba(0,0,0,0.5);
+  border-bottom:1px dashed var(--hp-border-warm);padding-bottom:8px;
+}
+.insight-body{font-size:13px;line-height:1.6;color:var(--hp-text)}
+.insight-list{list-style:none;padding:0}
+.insight-list li{padding:6px 0;border-bottom:1px dashed rgba(58,47,74,0.5);font-size:12px;color:var(--hp-text-dim);display:flex;justify-content:space-between;gap:8px}
+.insight-list li:last-child{border-bottom:none}
+.insight-list li b{color:var(--hp-text)}
+
+.legend-row{display:flex;flex-wrap:wrap;gap:12px;margin-top:6px}
+.legend-item{display:flex;align-items:center;gap:6px;font-size:11px;color:var(--hp-text-dim)}
+.legend-dot{width:10px;height:10px;border-radius:3px}
+
+.scrollbar::-webkit-scrollbar{width:8px;height:8px}
+.scrollbar::-webkit-scrollbar-track{background:transparent}
+.scrollbar::-webkit-scrollbar-thumb{background:var(--hp-border);border-radius:4px}
+.scrollbar::-webkit-scrollbar-thumb:hover{background:var(--hp-gold)}
+*{scrollbar-width:thin;scrollbar-color:var(--hp-border) transparent}
+
+/* RESPONSIVE BREAKPOINTS */
+@media (max-width: 1400px){
+  .kpi-grid{grid-template-columns:repeat(auto-fit, minmax(140px, 1fr))}
+}
+@media (max-width: 1100px){
+  .row.cols-2,.row.cols-3,.row.cols-2-1{grid-template-columns:1fr}
+}
+@media (max-width: 900px){
+  .menu-toggle{display:flex}
+  .sidebar{
+    position:fixed;left:0;top:0;height:100vh;width:260px;
+    transform:translateX(-100%);
+  }
+  .sidebar.open{transform:translateX(0)}
+  .main{padding:60px 14px 14px 14px}
+  .kpi-grid{grid-template-columns:repeat(auto-fit, minmax(130px, 1fr));gap:8px}
+  .filters{grid-template-columns:repeat(auto-fit, minmax(130px, 1fr));gap:6px;padding:10px}
+  .panel{padding:12px}
+  .topbar{margin-bottom:14px}
+  .chart-wrap{height:250px}
+  .chart-wrap.tall{height:300px}
+  .chart-wrap.short{height:180px}
+}
+@media (max-width: 600px){
+  .kpi-grid{grid-template-columns:repeat(2, 1fr)}
+  .filters{grid-template-columns:repeat(2, 1fr)}
+  .topbar-actions{width:100%}
+  .topbar-actions .btn{flex:1}
+  .panel-title{font-size:12px}
+  .insight-grid{grid-template-columns:1fr !important}
+  .squad-banner h3{font-size:13px}
+}
+@media (min-width: 1900px){
+  /* Cap KPI columns on huge screens */
+  .kpi-grid{grid-template-columns:repeat(6, 1fr)}
+  .main{padding:32px 40px;max-width:1800px;margin:0 auto;width:100%}
+  .filters{grid-template-columns:repeat(11, 1fr)}
+}
+@media (min-width: 2400px){
+  body{font-size:16px}
+  .main{max-width:2200px}
+}
+
+/* Print mode */
+@media print{
+  .sidebar, .topbar-actions, .menu-toggle{display:none !important}
+  .main{padding:10px}
+  .panel{break-inside:avoid;border-color:#888}
+  body{background:#fff;color:#000}
+}
+
+/* HOUSE CREST badges (used inline in squad banners) */
+.house-crest{
+  width:60px;height:70px;flex-shrink:0;
+  position:relative;
+  filter:drop-shadow(0 3px 8px rgba(0,0,0,0.5));
+}
+
+/* Snitch animation for hero indicator */
+@keyframes snitchFly{
+  0%{transform:translate(0,0) rotate(-5deg)}
+  25%{transform:translate(3px,-2px) rotate(5deg)}
+  50%{transform:translate(-2px,2px) rotate(-3deg)}
+  75%{transform:translate(2px,-1px) rotate(2deg)}
+  100%{transform:translate(0,0) rotate(-5deg)}
+}
+.snitch{
+  display:inline-block;animation:snitchFly 2s ease-in-out infinite;
+  vertical-align:middle;
+}
+
+/* Sorting Hat for backlog */
+.sorting-hat{display:inline-block;font-size:14px;vertical-align:middle}
+
+/* Platform 9¾ ticket-style KPI accent */
+.platform-num{
+  display:inline-block;padding:1px 6px;border-radius:3px;
+  font-family:'Cinzel',serif;font-size:9px;font-weight:800;
+  background:linear-gradient(180deg, var(--hp-red), var(--hp-wax-dark));
+  color:var(--hp-gold);letter-spacing:1px;
+  border:1px solid var(--hp-gold-dim);
+  text-shadow:0 1px 0 #000;
+}
+
+/* HOUSE BANNERS — like Hogwarts Houses */
+.squad-banner{
+  display:flex;align-items:center;gap:14px;padding:16px;border-radius:6px;
+  background:
+    linear-gradient(135deg, var(--bg1, #2A1E0F), var(--bg2, #1A1208)),
+    url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='80' height='80'><filter id='n'><feTurbulence baseFrequency='0.85' numOctaves='2'/><feColorMatrix values='0 0 0 0 0.55 0 0 0 0 0.4 0 0 0 0 0.2 0 0 0 0.08 0'/></filter><rect width='100%25' height='100%25' filter='url(%23n)'/></svg>");
+  border:1px solid var(--hp-border-warm);
+  border-left:5px solid var(--accent, var(--hp-gold));
+  box-shadow: 0 3px 10px rgba(0,0,0,0.4), inset 0 1px 0 rgba(212,177,68,0.1);
+  position:relative;
+}
+.squad-banner::after{
+  content:'';position:absolute;top:6px;right:6px;width:14px;height:14px;
+  border:1px solid var(--accent);border-radius:50%;opacity:0.5;
+}
+.squad-banner.s1{--accent:var(--hp-red-2);--bg1:rgba(122,15,14,0.25);--bg2:rgba(42,30,15,0.85)}
+.squad-banner.s2{--accent:var(--hp-green);--bg1:rgba(30,74,44,0.25);--bg2:rgba(42,30,15,0.85)}
+.squad-banner.s3{--accent:var(--hp-blue);--bg1:rgba(36,55,99,0.25);--bg2:rgba(42,30,15,0.85)}
+.squad-banner.s4{--accent:var(--hp-mustard);--bg1:rgba(212,177,68,0.22);--bg2:rgba(42,30,15,0.85)}
+.squad-banner h3{
+  font-family:'Cinzel',serif;color:var(--hp-gold);font-size:15px;letter-spacing:1.5px;
+  text-transform:uppercase;text-shadow:0 1px 2px rgba(0,0,0,0.5);
+}
+.squad-banner small{color:var(--hp-text-dim);font-size:11px;font-family:'Cormorant Garamond',serif;font-style:italic}
+
+/* TABS */
+.tab-row{display:flex;gap:6px;margin-bottom:16px;flex-wrap:wrap}
+.tab{padding:8px 14px;border:1px solid var(--hp-border);border-radius:6px;background:transparent;color:var(--hp-text-dim);cursor:pointer;font-size:11px;font-family:'Cinzel',serif;letter-spacing:1px}
+.tab.active{background:rgba(212,177,68,0.12);color:var(--hp-gold);border-color:var(--hp-gold)}
+
+.empty{text-align:center;padding:30px;color:var(--hp-text-mute);font-style:italic}
+
+/* TOAST — like a sealed letter */
+.toast{
+  position:fixed;bottom:20px;right:20px;
+  background:
+    linear-gradient(135deg, rgba(42,30,15,0.97), rgba(26,18,8,0.97)),
+    url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='60' height='60'><filter id='n'><feTurbulence baseFrequency='0.85' numOctaves='2'/><feColorMatrix values='0 0 0 0 0.55 0 0 0 0 0.4 0 0 0 0 0.2 0 0 0 0.1 0'/></filter><rect width='100%25' height='100%25' filter='url(%23n)'/></svg>");
+  border:1px solid var(--hp-gold);border-radius:4px;padding:14px 18px;
+  color:var(--hp-text);font-size:13px;
+  box-shadow:0 10px 30px rgba(0,0,0,0.6), inset 0 1px 0 rgba(212,177,68,0.2);
+  z-index:9999;opacity:0;transform:translateY(20px);transition:all 0.3s;
+  font-family:'Cormorant Garamond',serif;
+}
+.toast.show{opacity:1;transform:translateY(0)}
+.toast::before{
+  content:'❦';position:absolute;top:-8px;left:14px;
+  background:radial-gradient(circle, var(--hp-wax) 0%, var(--hp-wax-dark) 100%);
+  width:20px;height:20px;border-radius:50%;
+  display:flex;align-items:center;justify-content:center;
+  color:var(--hp-gold);font-size:11px;
+  box-shadow:0 2px 4px rgba(0,0,0,0.5);
+}
+</style>
+</head>
+<body>
+<button class="menu-toggle" id="menuToggle" title="Toggle menu">☰</button>
+<div class="app">
+  <!-- SIDEBAR -->
+  <aside class="sidebar scrollbar" id="sidebar">
+    <div class="brand">
+      <div class="brand-crest">
+        <svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg" width="100%" height="100%">
+          <defs>
+            <radialGradient id="crestBg" cx="50%" cy="40%" r="60%">
+              <stop offset="0%" stop-color="#2A1E0F"/>
+              <stop offset="100%" stop-color="#0F0904"/>
+            </radialGradient>
+          </defs>
+          <!-- outer ring with house colors -->
+          <circle cx="50" cy="50" r="48" fill="url(#crestBg)" stroke="#D4B144" stroke-width="2"/>
+          <circle cx="50" cy="50" r="44" fill="none" stroke="#D4B144" stroke-width="0.5" stroke-dasharray="2 1"/>
+          <!-- 4 colored arc segments -->
+          <path d="M 50 6 A 44 44 0 0 1 94 50 L 84 50 A 34 34 0 0 0 50 16 Z" fill="#7A0F0E" opacity="0.85"/>
+          <path d="M 94 50 A 44 44 0 0 1 50 94 L 50 84 A 34 34 0 0 0 84 50 Z" fill="#1E4A2C" opacity="0.85"/>
+          <path d="M 50 94 A 44 44 0 0 1 6 50 L 16 50 A 34 34 0 0 0 50 84 Z" fill="#D4B144" opacity="0.85"/>
+          <path d="M 6 50 A 44 44 0 0 1 50 6 L 50 16 A 34 34 0 0 0 16 50 Z" fill="#243763" opacity="0.85"/>
+          <!-- inner shield -->
+          <path d="M 50 28 L 70 32 L 70 56 Q 70 68 50 76 Q 30 68 30 56 L 30 32 Z" fill="#15100A" stroke="#D4B144" stroke-width="1.2"/>
+          <!-- TPS letters -->
+          <text x="50" y="58" text-anchor="middle" font-family="Cinzel, serif" font-size="14" font-weight="800" fill="#D4B144">TPS</text>
+        </svg>
+      </div>
+      <div class="brand-title">TPS PRODUCTION</div>
+      <div class="brand-sub">— SCHOOL OF WIZARDRY —</div>
+    </div>
+    <nav class="nav">
+      <div class="nav-item active" data-page="overview"><span class="nav-icon">🏰</span><span>Team Overview</span></div>
+      <div class="nav-item" data-page="client"><span class="nav-icon">📜</span><span>Client Work</span></div>
+      <div class="nav-item" data-page="performance"><span class="nav-icon">⚡</span><span>Team Performance</span></div>
+      <div class="nav-item" data-page="squad"><span class="nav-icon">🛡️</span><span>Squad View</span></div>
+      <div class="nav-item" data-page="individual"><span class="nav-icon">🪄</span><span>Individual View</span></div>
+      <div class="nav-item" data-page="insight"><span class="nav-icon">🔮</span><span>Insights</span></div>
+    </nav>
+
+    <div class="sidebar-footer">
+      <label class="upload-zone" for="csvUpload">
+        <div class="upload-zone-title">⬆ UPLOAD CSV</div>
+        <div class="upload-zone-sub">Drop or click — supports multiple files</div>
+        <input id="csvUpload" type="file" accept=".csv" multiple />
+      </label>
+      <div style="display:flex;gap:6px;margin-top:8px;justify-content:center;font-size:10px;color:var(--hp-text-dim);align-items:center">
+        <label style="display:flex;align-items:center;gap:4px;cursor:pointer">
+          <input type="radio" name="uploadMode" value="append" checked /> Append
+        </label>
+        <label style="display:flex;align-items:center;gap:4px;cursor:pointer">
+          <input type="radio" name="uploadMode" value="replace" /> Replace
+        </label>
+      </div>
+
+      <div id="dataSourcesPanel" style="margin-top:12px;padding:10px;border:1px solid var(--hp-border);border-radius:8px;background:rgba(20,16,28,0.5);max-height:200px;overflow-y:auto" class="scrollbar"></div>
+
+      <button class="btn btn-gold btn-block" id="downloadPdf">⬇ EXPORT PDF</button>
+      <button class="btn btn-red btn-block" id="resetData">↻ RESET TO DEFAULT</button>
+      <div style="margin-top:14px;font-size:10px;color:var(--hp-text-mute);text-align:center;letter-spacing:1px">
+        ✦ ✦ ✦<br/>"After all this time?"<br/>— Always.
+      </div>
+    </div>
+  </aside>
+
+  <!-- MAIN -->
+  <main class="main" id="main">
+
+    <!-- OVERVIEW -->
+    <section class="page active" id="page-overview">
+      <div class="topbar">
+        <div class="page-title-wrap">
+          <h1>Team Overview</h1>
+          <p>ภาพรวมการทำงานทั้งหมดของทีม Production · The Great Hall</p>
+        </div>
+        <div class="topbar-actions">
+          <button class="btn btn-gold" id="exportOverview">⬇ Export this page</button>
+        </div>
+      </div>
+
+      <div class="filters" id="globalFilters"></div>
+
+      <div class="kpi-grid" id="kpiGrid"></div>
+
+      <div class="row cols-2-1">
+        <div class="panel">
+          <div class="wax-seal">TPS</div>
+          <div class="panel-title">Workload by Squad — Stacked View</div>
+          <div class="panel-sub">เทียบ Estimated vs Actual Manhour ของทุก Squad</div>
+          <div class="chart-wrap"><canvas id="chartSquadWorkload"></canvas></div>
+        </div>
+        <div class="panel">
+          <div class="panel-title">Status Breakdown</div>
+          <div class="panel-sub">งานทั้งหมดตามสถานะปัจจุบัน</div>
+          <div class="chart-wrap"><canvas id="chartStatus"></canvas></div>
+        </div>
+      </div>
+
+      <div class="row cols-2">
+        <div class="panel">
+          <div class="panel-title">Tasks by Priority</div>
+          <div class="panel-sub">การกระจายตามระดับความเร่งด่วน</div>
+          <div class="chart-wrap short"><canvas id="chartPriority"></canvas></div>
+        </div>
+        <div class="panel">
+          <div class="panel-title">Tasks by Complexity</div>
+          <div class="panel-sub">ระดับความยากของงานที่กำลังทำ</div>
+          <div class="chart-wrap short"><canvas id="chartComplexity"></canvas></div>
+        </div>
+      </div>
+
+      <div class="row cols-2-1">
+        <div class="panel">
+          <div class="panel-title">🔴 Crisis Watch — Tasks ต้อง Focus</div>
+          <div class="panel-sub">งานที่ Hold / Overdue / ด่วนที่สุด ที่ต้องลงมือทันที</div>
+          <div class="table-wrap scrollbar" style="max-height:340px">
+            <table id="tableCrisis"><thead><tr><th>Task</th><th>Client</th><th>Owner</th><th>Status</th><th>Priority</th><th>Diff</th></tr></thead><tbody></tbody></table>
+          </div>
+        </div>
+        <div class="panel">
+          <div class="panel-title">🌟 Hero Tasks — ส่งเร็ว/ปิดดี</div>
+          <div class="panel-sub">งานที่ Done / Approved พร้อมรายละเอียด</div>
+          <div class="table-wrap scrollbar" style="max-height:340px">
+            <table id="tableHero"><thead><tr><th>Task</th><th>Owner</th><th>Status</th></tr></thead><tbody></tbody></table>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- CLIENT WORK -->
+    <section class="page" id="page-client">
+      <div class="topbar">
+        <div class="page-title-wrap">
+          <h1>Client Work</h1>
+          <p>ภาพรวมงานต่อลูกค้าทุกแบรนด์ · The Sorting of Brands</p>
+        </div>
+      </div>
+
+      <div class="filters" id="globalFilters2"></div>
+
+      <div class="kpi-grid" id="clientKpi"></div>
+
+      <div class="row cols-2-1">
+        <div class="panel">
+          <div class="panel-title">Tasks per Client</div>
+          <div class="panel-sub">จำนวนงานทั้งหมดต่อลูกค้า (เรียงจากมากที่สุด)</div>
+          <div class="chart-wrap tall"><canvas id="chartClientTasks"></canvas></div>
+        </div>
+        <div class="panel">
+          <div class="panel-title">Estimated Manhour by Client</div>
+          <div class="panel-sub">ปริมาณ manhour ที่แต่ละ client ใช้</div>
+          <div class="chart-wrap tall"><canvas id="chartClientManhour"></canvas></div>
+        </div>
+      </div>
+
+      <div class="panel">
+        <div class="panel-title">Client × Task Type Heat Matrix</div>
+        <div class="panel-sub">ดูว่าลูกค้าแต่ละเจ้าใช้งานประเภทใดบ้าง</div>
+        <div class="table-wrap scrollbar" style="max-height:520px">
+          <table id="tableClientMatrix"></table>
+        </div>
+      </div>
+
+      <div class="row cols-2">
+        <div class="panel">
+          <div class="panel-title">Client Status Distribution</div>
+          <div class="chart-wrap"><canvas id="chartClientStatus"></canvas></div>
+        </div>
+        <div class="panel">
+          <div class="panel-title">Top 10 Clients by Workload</div>
+          <div class="table-wrap"><table id="tableTopClients"><thead><tr><th>#</th><th>Client</th><th>Tasks</th><th>Est. MH</th><th>Squad</th></tr></thead><tbody></tbody></table></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- TEAM PERFORMANCE -->
+    <section class="page" id="page-performance">
+      <div class="topbar">
+        <div class="page-title-wrap">
+          <h1>Team Performance</h1>
+          <p>การวัดผลทั้งทีม · KPI · Manhour Timeline · The Quaffle of KPIs</p>
+        </div>
+      </div>
+      <div class="filters" id="globalFilters3"></div>
+
+      <div class="kpi-grid" id="perfKpi"></div>
+
+      <div class="row cols-2">
+        <div class="panel">
+          <div class="panel-title">Manhour Timeline</div>
+          <div class="panel-sub">Estimated vs Actual แยกตามวัน Do Date</div>
+          <div class="chart-wrap"><canvas id="chartManhourTimeline"></canvas></div>
+        </div>
+        <div class="panel">
+          <div class="panel-title">On-time vs Overdue</div>
+          <div class="panel-sub">การส่งตรงเวลาเทียบกับการเกินกำหนด</div>
+          <div class="chart-wrap"><canvas id="chartOntime"></canvas></div>
+        </div>
+      </div>
+
+      <div class="row cols-2">
+        <div class="panel">
+          <div class="panel-title">Estimated vs Actual (Efficiency)</div>
+          <div class="panel-sub">ตรวจสอบว่าทีมประมาณเวลาแม่นแค่ไหน</div>
+          <div class="chart-wrap"><canvas id="chartEffi"></canvas></div>
+        </div>
+        <div class="panel">
+          <div class="panel-title">Task Type Mix</div>
+          <div class="panel-sub">งานประเภทใดที่ทีมใช้เวลาเยอะที่สุด</div>
+          <div class="chart-wrap"><canvas id="chartTaskTypeMix"></canvas></div>
+        </div>
+      </div>
+
+      <div class="panel">
+        <div class="panel-title">📋 Performance Scorecard — All People</div>
+        <div class="panel-sub">เทียบ Manhour, จำนวนงาน, On-time rate รายบุคคล</div>
+        <div class="table-wrap scrollbar" style="max-height:480px">
+          <table id="tableScorecard"><thead><tr>
+            <th>#</th><th>Owner</th><th>Squad</th><th>Tasks</th><th>Done</th><th>Doing</th>
+            <th>Hold</th><th>Est. MH</th><th>Actual MH</th><th>Util %</th><th>Status</th>
+          </tr></thead><tbody></tbody></table>
+        </div>
+      </div>
+    </section>
+
+    <!-- SQUAD VIEW -->
+    <section class="page" id="page-squad">
+      <div class="topbar">
+        <div class="page-title-wrap">
+          <h1>Squad View</h1>
+          <p>ดูงานแต่ละ Squad · 4 Houses ของทีม Production</p>
+        </div>
+      </div>
+      <div class="filters" id="globalFilters4"></div>
+
+      <div class="row cols-2" id="squadBanners"></div>
+
+      <div class="row cols-2">
+        <div class="panel">
+          <div class="panel-title">Squad Tasks Distribution</div>
+          <div class="chart-wrap"><canvas id="chartSquadTasks"></canvas></div>
+        </div>
+        <div class="panel">
+          <div class="panel-title">Squad Manhour Comparison</div>
+          <div class="chart-wrap"><canvas id="chartSquadMh"></canvas></div>
+        </div>
+      </div>
+
+      <div class="panel">
+        <div class="panel-title">Squad × Status Matrix</div>
+        <div class="table-wrap"><table id="tableSquadStatus"></table></div>
+      </div>
+
+      <div class="panel">
+        <div class="panel-title">Squad Members Workload</div>
+        <div class="panel-sub">การกระจายงานในแต่ละ Squad ตามผู้รับผิดชอบ</div>
+        <div id="squadMembers" class="row cols-2"></div>
+      </div>
+    </section>
+
+    <!-- INDIVIDUAL VIEW -->
+    <section class="page" id="page-individual">
+      <div class="topbar">
+        <div class="page-title-wrap">
+          <h1>Individual View</h1>
+          <p style="font-family:'Cormorant Garamond',serif;font-style:italic">"I solemnly swear that I am up to no good." · Personal Workload · The Marauder's Map</p>
+        </div>
+      </div>
+      <div class="filters" id="globalFilters5"></div>
+
+      <div class="panel" style="margin-bottom:18px">
+        <div class="panel-title">เลือกบุคคล</div>
+        <div id="personPicker" class="row cols-3" style="grid-template-columns:repeat(auto-fill, minmax(180px, 1fr))"></div>
+      </div>
+
+      <div id="personDetail"></div>
+    </section>
+
+    <!-- INSIGHTS -->
+    <section class="page" id="page-insight">
+      <div class="topbar">
+        <div class="page-title-wrap">
+          <h1>Insights</h1>
+          <p>การวิเคราะห์อัตโนมัติ + คำแนะนำในการพัฒนาทีม · The Pensieve</p>
+        </div>
+      </div>
+      <div class="filters" id="globalFilters6"></div>
+
+      <div class="panel" style="margin-bottom:18px">
+        <div class="wax-seal">SOS</div>
+        <div class="panel-title">📊 Executive Summary</div>
+        <div id="executiveSummary"></div>
+      </div>
+
+      <div class="panel" style="margin-bottom:18px">
+        <div class="panel-title">🚨 Crisis & Risks</div>
+        <div class="panel-sub">เรื่องที่หัวหน้าทีมต้องเข้าไปดูทันที</div>
+        <div class="insight-grid" id="insightCrisis"></div>
+      </div>
+
+      <div class="panel" style="margin-bottom:18px">
+        <div class="panel-title">🌟 Heroes & Wins</div>
+        <div class="panel-sub">คนและทีมที่ทำผลงานดี ควรชื่นชม</div>
+        <div class="insight-grid" id="insightHero"></div>
+      </div>
+
+      <div class="panel" style="margin-bottom:18px">
+        <div class="panel-title">🪄 Recommendations — พัฒนาคน, พัฒนาทีม, พัฒนางาน</div>
+        <div class="insight-grid" id="insightReco"></div>
+      </div>
+
+      <div class="panel">
+        <div class="panel-title">📌 KPI Snapshot ต่อบุคคล</div>
+        <div class="panel-sub">ใช้สำหรับ 1-on-1 และประเมินผลรายบุคคล</div>
+        <div class="table-wrap scrollbar" style="max-height:520px">
+          <table id="tableKpiSnapshot"><thead><tr>
+            <th>Owner</th><th>Tasks</th><th>Workload (h)</th><th>Util %</th><th>Status</th><th>Strength</th><th>Watch</th>
+          </tr></thead><tbody></tbody></table>
+        </div>
+      </div>
+    </section>
+
+  </main>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+/* ============================
+   EMBEDDED DEFAULT DATA
+   (อ่านจาก CSV ทั้ง 17 ไฟล์)
+============================ */
+const DEFAULT_CSV = `Priority,No,Year,Month,Project Type,Project ID,Client,Task,Task Type,Squad,Complexity,Owner,Estimated Manhour,Actual Manhour,Revise Reason,Do Date,Due Date,Actual Due Date,Diff,Task Status,Remark
+ด่วนที่สุด,1,2026,5/1/2026,Operation,,TKN,CT_FB_TKN 001,CT Single,Squad 1,งานง่าย,Film,2,1,None,1-5-2026,1-5-2026,7-5-2026,-6,Doing,
+กลาง,2,2026,5/1/2026,Operation,,TKN,CT_FB_TKN 002,CT Single,Squad 1,งานกลาง,Film,2,2,None,1-5-2026,1-5-2026,7-5-2026,-6,Doing,
+รอได้,3,2026,5/1/2026,Operation,,TKN,CT_FB_TKN 003,CT Single,Squad 1,งานยาก,Film,2,1.5,None,1-5-2026,1-5-2026,7-5-2026,-6,Doing,
+กลาง,4,2026,5/1/2026,Operation,,TKN,CT_FB_TKN 004,CT Single,Squad 1,งานกลาง,Film,2,1,None,1-5-2026,1-5-2026,7-5-2026,-6,Doing,
+,5,2026,5/1/2026,,,TKN,GD_FB_TKN 001,AW Single,Squad 1,,Gam,3,,,,,,,,
+,6,2026,5/1/2026,,,TKN,GD_FB_TKN 002,AW Single,Squad 1,,Gam,3,,,,,,,,
+,7,2026,5/1/2026,,,TKN,GD_FB_TKN 003,AW Single,Squad 1,,Gam,3,,,,,,,,
+,8,2026,5/1/2026,,,TKN,GD_FB_TKN 004,AW Single,Squad 1,,Gam,3,,,,,,,,
+,9,2026,5/1/2026,,,TKN,CT_TT_TKN 001,MT Pre-Pro,Squad 1,,Yok,2,,,,,,,,
+,10,2026,5/1/2026,,,TKN,CT_TT_TKN 002,MT Pre-Pro,Squad 1,,Yok,2,,,,,,,,
+,11,2026,5/1/2026,,,TKN,CT_TT_TKN 003,MT Pre-Pro,Squad 1,,Yok,2,,,,,,,,
+,12,2026,5/1/2026,,,TKN,CT_TT_TKN 004,MT Pre-Pro,Squad 1,,Yok,2,,,,,,,,
+,13,2026,5/1/2026,,,TKN,SH_TT_TKN 001,MT Shooting,Squad 1,,Yok,2,,,,,,,,
+,14,2026,5/1/2026,,,TKN,SH_TT_TKN 002,MT Shooting,Squad 1,,Yok,2,,,,,,,,
+,15,2026,5/1/2026,,,TKN,SH_TT_TKN 003,MT Shooting,Squad 1,,Yok,2,,,,,,,,
+,16,2026,5/1/2026,,,TKN,SH_TT_TKN 004,MT Shooting,Squad 1,,Yok,2,,,,,,,,
+,17,2026,5/1/2026,,,TKN,ED_TT_TKN 005,MT Editor,Squad 1,,Yok,2,,,,,,,,
+,18,2026,5/1/2026,,,TKN,ED_TT_TKN 006,MT Editor,Squad 1,,Yok,2,,,,,,,,
+,19,2026,5/1/2026,,,TKN,ED_TT_TKN 007,MT Editor,Squad 1,,Yok,2,,,,,,,,
+,20,2026,5/1/2026,,,TKN,ED_TT_TKN 008,MT Editor,Squad 1,,Yok,2,,,,,,,,
+ด่วนที่สุด,1,2026,5/1/2026,Operation,,TKNLife,CT_FB_TKL 001,CT Single,Squad 1,งานง่าย,Art,2,1,None,1-5-2026,1-5-2026,7-5-2026,-6,Doing,
+กลาง,2,2026,5/1/2026,Operation,,TKNLife,CT_FB_TKL 002,CT Single,Squad 1,งานกลาง,Art,2,2,None,1-5-2026,1-5-2026,7-5-2026,-6,Doing,
+รอได้,3,2026,5/1/2026,Operation,,TKNLife,CT_FB_TKL 003,CT Single,Squad 1,งานยาก,Art,2,2,None,1-5-2026,1-5-2026,7-5-2026,-6,Doing,
+กลาง,4,2026,5/1/2026,Operation,,TKNLife,CT_FB_TKL 004,CT Single,Squad 1,งานกลาง,Art,2,2,None,1-5-2026,1-5-2026,7-5-2026,-6,Doing,
+,5,2026,5/1/2026,,,TKNLife,CT_FB_TKL 005,CT Single,Squad 1,,Art,2,,,,,,,,
+,6,2026,5/1/2026,,,TKNLife,CT_FB_TKL 006,CT Single,Squad 1,,Art,2,,,,,,,,
+,7,2026,5/1/2026,,,TKNLife,CT_FB_TKL 007,CT Single,Squad 1,,Art,2,,,,,,,,
+,8,2026,5/1/2026,,,TKNLife,CT_FB_TKL 008,CT Single,Squad 1,,Art,2,,,,,,,,
+,9,2026,5/1/2026,,,TKNLife,GD_FB_TKL 001,AW Single,Squad 1,,Gam,3,,,,,,,,
+,10,2026,5/1/2026,,,TKNLife,GD_FB_TKL 002,AW Single,Squad 1,,Gam,3,,,,,,,,
+,11,2026,5/1/2026,,,TKNLife,GD_FB_TKL 003,AW Single,Squad 1,,Gam,3,,,,,,,,
+,12,2026,5/1/2026,,,TKNLife,GD_FB_TKL 004,AW Single,Squad 1,,Gam,3,,,,,,,,
+,13,2026,5/1/2026,,,TKNLife,GD_FB_TKL 005,AW Single,Squad 1,,Gam,3,,,,,,,,
+,14,2026,5/1/2026,,,TKNLife,GD_FB_TKL 006,AW Single,Squad 1,,Gam,3,,,,,,,,
+,15,2026,5/1/2026,,,TKNLife,GD_FB_TKL 007,AW Single,Squad 1,,Gam,3,,,,,,,,
+,16,2026,5/1/2026,,,TKNLife,GD_FB_TKL 008,AW Single,Squad 1,,Gam,3,,,,,,,,
+,17,2026,5/1/2026,,,TKNLife,CT_TT_TKL 001,MT Pre-Pro,Squad 1,,Yok,2,,,,,,,,
+,18,2026,5/1/2026,,,TKNLife,CT_TT_TKL 002,MT Pre-Pro,Squad 1,,Yok,2,,,,,,,,
+,19,2026,5/1/2026,,,TKNLife,CT_TT_TKL 003,MT Pre-Pro,Squad 1,,Yok,2,,,,,,,,
+,20,2026,5/1/2026,,,TKNLife,CT_TT_TKL 004,MT Pre-Pro,Squad 1,,Yok,2,,,,,,,,
+,21,2026,5/1/2026,,,TKNLife,CT_TT_TKL 005,MT Pre-Pro,Squad 1,,Yok,2,,,,,,,,
+,22,2026,5/1/2026,,,TKNLife,CT_TT_TKL 006,MT Pre-Pro,Squad 1,,Yok,2,,,,,,,,
+,23,2026,5/1/2026,,,TKNLife,CT_TT_TKL 007,MT Pre-Pro,Squad 1,,Yok,2,,,,,,,,
+,24,2026,5/1/2026,,,TKNLife,CT_TT_TKL 008,MT Pre-Pro,Squad 1,,Yok,2,,,,,,,,
+,25,2026,5/1/2026,,,TKNLife,CT_TT_TKL 009,MT Pre-Pro,Squad 1,,Yok,2,,,,,,,,
+,26,2026,5/1/2026,,,TKNLife,SH_TT_TKL 001,MT Shooting,Squad 1,,Yok,2,,,,,,,,
+,27,2026,5/1/2026,,,TKNLife,SH_TT_TKL 002,MT Shooting,Squad 1,,Yok,2,,,,,,,,
+,28,2026,5/1/2026,,,TKNLife,SH_TT_TKL 003,MT Shooting,Squad 1,,Yok,2,,,,,,,,
+,29,2026,5/1/2026,,,TKNLife,SH_TT_TKL 004,MT Shooting,Squad 1,,Yok,2,,,,,,,,
+,30,2026,5/1/2026,,,TKNLife,SH_TT_TKL 005,MT Shooting,Squad 1,,Yok,2,,,,,,,,
+,31,2026,5/1/2026,,,TKNLife,SH_TT_TKL 006,MT Shooting,Squad 1,,Yok,2,,,,,,,,
+,32,2026,5/1/2026,,,TKNLife,SH_TT_TKL 007,MT Shooting,Squad 1,,Yok,2,,,,,,,,
+,33,2026,5/1/2026,,,TKNLife,SH_TT_TKL 008,MT Shooting,Squad 1,,Yok,2,,,,,,,,
+,34,2026,5/1/2026,,,TKNLife,SH_TT_TKL 009,MT Shooting,Squad 1,,Yok,2,,,,,,,,
+,35,2026,5/1/2026,,,TKNLife,ED_TT_TKL 001,MT Editor,Squad 1,,Yok,2,,,,,,,,
+,36,2026,5/1/2026,,,TKNLife,ED_TT_TKL 002,MT Editor,Squad 1,,Yok,2,,,,,,,,
+,37,2026,5/1/2026,,,TKNLife,ED_TT_TKL 003,MT Editor,Squad 1,,Yok,2,,,,,,,,
+,38,2026,5/1/2026,,,TKNLife,ED_TT_TKL 004,MT Editor,Squad 1,,Yok,2,,,,,,,,
+,39,2026,5/1/2026,,,TKNLife,ED_TT_TKL 005,MT Editor,Squad 1,,Yok,2,,,,,,,,
+,40,2026,5/1/2026,,,TKNLife,ED_TT_TKL 006,MT Editor,Squad 1,,Yok,2,,,,,,,,
+,41,2026,5/1/2026,,,TKNLife,ED_TT_TKL 007,MT Editor,Squad 1,,Yok,2,,,,,,,,
+,42,2026,5/1/2026,,,TKNLife,ED_TT_TKL 008,MT Editor,Squad 1,,Yok,2,,,,,,,,
+,43,2026,5/1/2026,,,TKNLife,ED_TT_TKL 009,MT Editor,Squad 1,,Yok,2,,,,,,,,
+ด่วนที่สุด,1,2026,5/1/2026,Operation,,WowCorn,CT_FB_WOW 001,CT Single,Squad 1,งานง่าย,Film,2,1,None,1-5-2026,1-5-2026,7-5-2026,-6,Client Review,
+กลาง,2,2026,5/1/2026,Operation,,WowCorn,CT_FB_WOW 002,CT Single,Squad 1,งานกลาง,Film,2,2,None,1-5-2026,1-5-2026,7-5-2026,-6,Client Review,
+รอได้,3,2026,5/1/2026,Operation,,WowCorn,CT_FB_WOW 003,CT Album,Squad 1,งานยาก,Film,3,2,None,1-5-2026,1-5-2026,7-5-2026,-6,Done,
+รอได้,4,2026,5/1/2026,Operation,,WowCorn,GD_FB_WOW 001,AW Single,Squad 1,,Ting,3,2,None,1-5-2026,1-5-2026,7-5-2026,-6,Done,
+,5,2026,5/1/2026,,,WowCorn,GD_FB_WOW 002,AW Single,Squad 1,,Ting,3,,,,,,,,
+,6,2026,5/1/2026,,,WowCorn,GD_FB_WOW 003,AW Album,Squad 1,,Ting,5,,,,,,,,
+,7,2026,5/1/2026,,,WowCorn,CT_TT_WOW 001,MT Pre-Pro,Squad 1,,Yok,2,,,,,,,,
+,8,2026,5/1/2026,,,WowCorn,CT_TT_WOW 002,MT Pre-Pro,Squad 1,,Yok,2,,,,,,,,
+,9,2026,5/1/2026,,,WowCorn,SH_TT_WOW 001,MT Shooting,Squad 1,,Yok,2,,,,,,,,
+,10,2026,5/1/2026,,,WowCorn,SH_TT_WOW 002,MT Shooting,Squad 1,,Yok,2,,,,,,,,
+,11,2026,5/1/2026,,,WowCorn,ED_TT_WOW 001,MT Editor,Squad 1,,Yok,2,,,,,,,,
+,12,2026,5/1/2026,,,WowCorn,ED_TT_WOW 002,MT Editor,Squad 1,,Yok,2,,,,,,,,
+ด่วนที่สุด,1,2026,5/1/2026,Operation,,BellyGom,CT_FB_BLG 001,CT Single,Squad 1,งานง่าย,Film,2,1,None,1-5-2026,1-5-2026,7-5-2026,-6,Doing,
+กลาง,2,2026,5/1/2026,Operation,,BellyGom,CT_FB_BLG 002,CT Single,Squad 1,งานกลาง,Film,2,2,None,1-5-2026,1-5-2026,7-5-2026,-6,Doing,
+รอได้,3,2026,5/1/2026,Operation,,BellyGom,CT_FB_BLG 003,CT Single,Squad 1,งานยาก,Film,2,1,None,1-5-2026,1-5-2026,7-5-2026,-6,Doing,
+ด่วนที่สุด,4,2026,5/1/2026,Operation,,BellyGom,CT_FB_BLG 004,CT Single,Squad 1,งานยาก,Film,2,1,None,1-5-2026,1-5-2026,7-5-2026,-6,Doing,
+,5,2026,5/1/2026,,,BellyGom,GD_FB_BLG 001,AW Single,Squad 1,,Beze,3,,,,,,,,
+,6,2026,5/1/2026,,,BellyGom,GD_FB_BLG 002,AW Single,Squad 1,,Beze,3,,,,,,,,
+,7,2026,5/1/2026,,,BellyGom,GD_FB_BLG 003,AW Single,Squad 1,,Beze,3,,,,,,,,
+,8,2026,5/1/2026,,,BellyGom,GD_FB_BLG 004,AW Single,Squad 1,,Beze,3,,,,,,,,
+,9,2026,5/1/2026,,,BellyGom,CT_TT_BLG 001,MT Pre-Pro,Squad 1,,Yok,2,,,,,,,,
+,10,2026,5/1/2026,,,BellyGom,CT_TT_BLG 002,MT Pre-Pro,Squad 1,,Yok,2,,,,,,,,
+,11,2026,5/1/2026,,,BellyGom,CT_TT_BLG 003,MT Pre-Pro,Squad 1,,Yok,2,,,,,,,,
+,12,2026,5/1/2026,,,BellyGom,CT_TT_BLG 004,MT Pre-Pro,Squad 1,,Yok,2,,,,,,,,
+,13,2026,5/1/2026,,,BellyGom,CT_TT_BLG 005,MT Pre-Pro,Squad 1,,Yok,2,,,,,,,,
+,14,2026,5/1/2026,,,BellyGom,SH_TT_BLG 001,MT Shooting,Squad 1,,Yok,2,,,,,,,,
+,15,2026,5/1/2026,,,BellyGom,SH_TT_BLG 002,MT Shooting,Squad 1,,Yok,2,,,,,,,,
+,16,2026,5/1/2026,,,BellyGom,SH_TT_BLG 003,MT Shooting,Squad 1,,Yok,2,,,,,,,,
+,17,2026,5/1/2026,,,BellyGom,SH_TT_BLG 004,MT Shooting,Squad 1,,Yok,2,,,,,,,,
+,18,2026,5/1/2026,,,BellyGom,SH_TT_BLG 005,MT Shooting,Squad 1,,Yok,2,,,,,,,,
+,19,2026,5/1/2026,,,BellyGom,ED_TT_BLG 001,MT Editor,Squad 1,,Yok,2,,,,,,,,
+,20,2026,5/1/2026,,,BellyGom,ED_TT_BLG 002,MT Editor,Squad 1,,Yok,2,,,,,,,,
+,21,2026,5/1/2026,,,BellyGom,ED_TT_BLG 003,MT Editor,Squad 1,,Yok,2,,,,,,,,
+,22,2026,5/1/2026,,,BellyGom,ED_TT_BLG 004,MT Editor,Squad 1,,Yok,2,,,,,,,,
+,23,2026,5/1/2026,,,BellyGom,ED_TT_BLG 005,MT Editor,Squad 1,,Yok,2,,,,,,,,
+ด่วนที่สุด,1,2026,5/1/2026,Operation,,BellyGom,CT_FB_PIL 001,CT Single,Squad 1,งานง่าย,Art,2,1,None,1-5-2026,1-5-2026,7-5-2026,-6,Doing,
+กลาง,2,2026,5/1/2026,Operation,,BellyGom,CT_FB_PIL 002,CT Single,Squad 1,งานกลาง,Art,2,2,None,1-5-2026,1-5-2026,7-5-2026,-6,Hold,
+รอได้,3,2026,5/1/2026,Operation,,BellyGom,CT_FB_PIL 003,CT Single,Squad 1,งานยาก,Art,2,0.5,None,1-5-2026,1-5-2026,7-5-2026,-6,Client Review,
+ด่วนที่สุด,4,2026,5/1/2026,Operation,,BellyGom,CT_FB_PIL 004,CT Single,Squad 1,งานกลาง,Art,2,0.5,None,1-5-2026,1-5-2026,7-5-2026,-6,Client Approved,
+,5,2026,5/1/2026,,,BellyGom,CT_FB_PIL 005,CT Single,Squad 1,,Art,2,,,,,,,,
+,6,2026,5/1/2026,,,BellyGom,CT_FB_PIL 006,CT Single,Squad 1,,Art,2,,,,,,,,
+,7,2026,5/1/2026,,,BellyGom,CT_FB_PIL 007,CT Single,Squad 1,,Art,2,,,,,,,,
+,8,2026,5/1/2026,,,BellyGom,CT_FB_PIL 008,CT Single,Squad 1,,Art,2,,,,,,,,
+,9,2026,5/1/2026,,,BellyGom,CT_FB_PIL 009,CT Single,Squad 1,,Art,2,,,,,,,,
+,10,2026,5/1/2026,,,BellyGom,CT_FB_PIL 010,CT Single,Squad 1,,Art,2,,,,,,,,
+,11,2026,5/1/2026,,,BellyGom,CT_FB_PIL 011,CT Single,Squad 1,,Art,2,,,,,,,,
+,12,2026,5/1/2026,,,BellyGom,CT_FB_PIL 012,CT Single,Squad 1,,Art,2,,,,,,,,
+,13,2026,5/1/2026,,,BellyGom,GD_FB_PIL 001,AW Single,Squad 1,,Gam,3,,,,,,,,
+,14,2026,5/1/2026,,,BellyGom,GD_FB_PIL 002,AW Single,Squad 1,,Gam,3,,,,,,,,
+,15,2026,5/1/2026,,,BellyGom,GD_FB_PIL 003,AW Single,Squad 1,,Gam,3,,,,,,,,
+,16,2026,5/1/2026,,,BellyGom,GD_FB_PIL 004,AW Single,Squad 1,,Gam,3,,,,,,,,
+,17,2026,5/1/2026,,,BellyGom,GD_FB_PIL 005,AW Single,Squad 1,,Gam,3,,,,,,,,
+,18,2026,5/1/2026,,,BellyGom,GD_FB_PIL 006,AW Single,Squad 1,,Gam,3,,,,,,,,
+,19,2026,5/1/2026,,,BellyGom,GD_FB_PIL 007,AW Single,Squad 1,,Gam,3,,,,,,,,
+,20,2026,5/1/2026,,,BellyGom,GD_FB_PIL 008,AW Single,Squad 1,,Gam,3,,,,,,,,
+,21,2026,5/1/2026,,,BellyGom,GD_FB_PIL 009,AW Single,Squad 1,,Gam,3,,,,,,,,
+,22,2026,5/1/2026,,,BellyGom,GD_FB_PIL 010,AW Single,Squad 1,,Gam,3,,,,,,,,
+,23,2026,5/1/2026,,,BellyGom,GD_FB_PIL 011,AW Single,Squad 1,,Gam,3,,,,,,,,
+,24,2026,5/1/2026,,,BellyGom,GD_FB_PIL 012,AW Single,Squad 1,,Gam,3,,,,,,,,
+,25,2026,5/1/2026,,,BellyGom,CT_TT_PIL 001,MT Pre-Pro,Squad 1,,Yok,2,,,,,,,,
+,26,2026,5/1/2026,,,BellyGom,CT_TT_PIL 002,MT Pre-Pro,Squad 1,,Yok,2,,,,,,,,
+,27,2026,5/1/2026,,,BellyGom,CT_TT_PIL 003,MT Pre-Pro,Squad 1,,Yok,2,,,,,,,,
+,28,2026,5/1/2026,,,BellyGom,CT_TT_PIL 004,MT Pre-Pro,Squad 1,,Yok,2,,,,,,,,
+,29,2026,5/1/2026,,,BellyGom,CT_TT_PIL 005,MT Pre-Pro,Squad 1,,Yok,2,,,,,,,,
+,30,2026,5/1/2026,,,BellyGom,CT_TT_PIL 006,MT Pre-Pro,Squad 1,,Yok,2,,,,,,,,
+,31,2026,5/1/2026,,,BellyGom,CT_TT_PIL 007,MT Pre-Pro,Squad 1,,Yok,2,,,,,,,,
+,32,2026,5/1/2026,,,BellyGom,CT_TT_PIL 008,MT Pre-Pro,Squad 1,,Yok,2,,,,,,,,
+,33,2026,5/1/2026,,,BellyGom,SH_TT_PIL 001,MT Shooting,Squad 1,,Yok,2,,,,,,,,
+,34,2026,5/1/2026,,,BellyGom,SH_TT_PIL 002,MT Shooting,Squad 1,,Yok,2,,,,,,,,
+,35,2026,5/1/2026,,,BellyGom,SH_TT_PIL 003,MT Shooting,Squad 1,,Yok,2,,,,,,,,
+,36,2026,5/1/2026,,,BellyGom,SH_TT_PIL 004,MT Shooting,Squad 1,,Yok,2,,,,,,,,
+,37,2026,5/1/2026,,,BellyGom,SH_TT_PIL 005,MT Shooting,Squad 1,,Yok,2,,,,,,,,
+,38,2026,5/1/2026,,,BellyGom,SH_TT_PIL 006,MT Shooting,Squad 1,,Yok,2,,,,,,,,
+,39,2026,5/1/2026,,,BellyGom,SH_TT_PIL 007,MT Shooting,Squad 1,,Yok,2,,,,,,,,
+,40,2026,5/1/2026,,,BellyGom,SH_TT_PIL 008,MT Shooting,Squad 1,,Yok,2,,,,,,,,
+,41,2026,5/1/2026,,,BellyGom,ED_TT_PIL 001,MT Editor,Squad 1,,Yok,2,,,,,,,,
+,42,2026,5/1/2026,,,BellyGom,ED_TT_PIL 002,MT Editor,Squad 1,,Yok,2,,,,,,,,
+,43,2026,5/1/2026,,,BellyGom,ED_TT_PIL 003,MT Editor,Squad 1,,Yok,2,,,,,,,,
+,44,2026,5/1/2026,,,BellyGom,ED_TT_PIL 004,MT Editor,Squad 1,,Yok,2,,,,,,,,
+,45,2026,5/1/2026,,,BellyGom,ED_TT_PIL 005,MT Editor,Squad 1,,Yok,2,,,,,,,,
+,46,2026,5/1/2026,,,BellyGom,ED_TT_PIL 006,MT Editor,Squad 1,,Yok,2,,,,,,,,
+,47,2026,5/1/2026,,,BellyGom,ED_TT_PIL 007,MT Editor,Squad 1,,Yok,2,,,,,,,,
+,48,2026,5/2/2026,,,BellyGom,ED_TT_PIL 008,MT Editor,Squad 1,,Yok,2,,,,,,,,
+ด่วนที่สุด,1,2026,5/1/2026,Operation,,SunLeaf,CT_FB_SUN 001,CT Single,Squad 2,งานง่าย,Art,2,1,None,1-5-2026,1-5-2026,7-5-2026,-6,Doing,
+กลาง,2,2026,5/1/2026,Operation,,SunLeaf,CT_FB_SUN 002,CT Single,Squad 2,งานกลาง,Art,2,2,None,1-5-2026,1-5-2026,7-5-2026,-6,Hold,
+รอได้,3,2026,5/1/2026,Operation,,SunLeaf,CT_FB_SUN 003,CT Album,Squad 2,งานยาก,Art,3,1,None,1-5-2026,1-5-2026,7-5-2026,-6,Client Review,
+ด่วนที่สุด,4,2026,5/1/2026,Operation,,SunLeaf,GD_FB_SUN 001,AW Single,Squad 2,,Gam,3,1,None,1-5-2026,1-5-2026,7-5-2026,-6,Client Approved,
+,5,2026,5/1/2026,,,SunLeaf,GD_FB_SUN 002,AW Single,Squad 2,,Gam,3,,,,,,,,
+,6,2026,5/1/2026,,,SunLeaf,GD_FB_SUN 003,AW Album,Squad 2,,Gam,5,,,,,,,,
+ด่วนที่สุด,1,2026,5/1/2026,Operation,,Useful,CT_FB_USE 001,CT Single,Squad 2,งานง่าย,Film,2,1,None,1-5-2026,1-5-2026,7-5-2026,-6,Doing,
+กลาง,2,2026,5/1/2026,Operation,,Useful,CT_FB_USE 002,CT Single,Squad 2,งานกลาง,Film,2,2,None,1-5-2026,1-5-2026,7-5-2026,-6,Hold,
+รอได้,3,2026,5/1/2026,Operation,,Useful,CT_FB_USE 003,CT Single,Squad 2,งานยาก,Film,2,1,None,1-5-2026,1-5-2026,7-5-2026,-6,Client Review,
+กลาง,4,2026,5/1/2026,Operation,,Useful,CT_FB_USE 003,CT Album,Squad 2,งานง่าย,Film,3,1,None,1-5-2026,1-5-2026,7-5-2026,-6,Client Approved,
+,5,2026,5/1/2026,,,Useful,GD_FB_USE 001,AW Single,Squad 2,,Gam,3,,,,,,,,
+,6,2026,5/1/2026,,,Useful,GD_FB_USE 002,AW Single,Squad 2,,Gam,3,,,,,,,,
+,7,2026,5/1/2026,,,Useful,GD_FB_USE 002,AW Single,Squad 2,,Gam,3,,,,,,,,
+,8,2026,5/1/2026,,,Useful,GD_FB_USE 003,AW Album,Squad 2,,Gam,5,,,,,,,,
+,9,2026,5/1/2026,,,Useful,CT_TT_USE 001,MT Pre-Pro,Squad 2,,Ning,2,,,,,,,,
+,10,2026,5/1/2026,,,Useful,CT_TT_USE 002,MT Pre-Pro,Squad 2,,Ning,2,,,,,,,,
+,11,2026,5/1/2026,,,Useful,CT_TT_USE 003,MT Pre-Pro,Squad 2,,Ning,2,,,,,,,,
+,12,2026,5/1/2026,,,Useful,SH_TT_USE 001,MT Shooting,Squad 2,,Ning,2,,,,,,,,
+,13,2026,5/1/2026,,,Useful,SH_TT_USE 002,MT Shooting,Squad 2,,Ning,2,,,,,,,,
+,14,2026,5/1/2026,,,Useful,SH_TT_USE 003,MT Shooting,Squad 2,,Ning,2,,,,,,,,
+,15,2026,5/1/2026,,,Useful,ED_TT_USE 001,MT Editor,Squad 2,,Ning,2,,,,,,,,
+,16,2026,5/1/2026,,,Useful,ED_TT_USE 002,MT Editor,Squad 2,,Ning,2,,,,,,,,
+,17,2026,5/1/2026,,,Useful,ED_TT_USE 003,MT Editor,Squad 2,,Ning,2,,,,,,,,
+ด่วนที่สุด,1,2026,5/1/2026,Operation,,TraChat,CT_FB_CHA 001,CT Single,Squad 2,งานง่าย,Art,2,1,None,1-5-2026,1-5-2026,7-5-2026,-6,Doing,
+กลาง,2,2026,5/1/2026,Operation,,TraChat,CT_FB_CHA 002,CT Single,Squad 2,งานกลาง,Art,2,2,None,1-5-2026,1-5-2026,7-5-2026,-6,Hold,
+รอได้,3,2026,5/1/2026,Operation,,TraChat,CT_FB_CHA 003,CT Single,Squad 2,งานยาก,Art,2,1,None,1-5-2026,1-5-2026,7-5-2026,-6,Client Review,
+รอได้,4,2026,5/1/2026,Operation,,TraChat,CT_FB_CHA 004,CT Single,Squad 2,งานกลาง,Art,2,1,None,1-5-2026,1-5-2026,7-5-2026,-6,Client Approved,
+,5,2026,5/1/2026,,,TraChat,CT_FB_CHA 005,CT Single,Squad 2,,Art,2,,,1-5-2026,1-5-2026,7-5-2026,-6,Done,
+,6,2026,5/1/2026,,,TraChat,CT_FB_CHA 006,CT Single,Squad 2,,Art,2,,,,,,,,
+,7,2026,5/1/2026,,,TraChat,CT_FB_CHA 007,CT Single,Squad 2,,Art,2,,,,,,,,
+,8,2026,5/1/2026,,,TraChat,CT_FB_CHA 008,CT Single,Squad 2,,Art,2,,,,,,,,
+,9,2026,5/1/2026,,,TraChat,CT_FB_CHA 009,CT Single,Squad 2,,Art,2,,,,,,,,
+,10,2026,5/1/2026,,,TraChat,CT_FB_CHA 010,CT Album,Squad 2,,Art,3,,,,,,,,
+,11,2026,5/1/2026,,,TraChat,CT_FB_CHA 011,CT Album,Squad 2,,Art,3,,,,,,,,
+,12,2026,5/1/2026,,,TraChat,GD_FB_CHA 001,AW Single,Squad 2,,Gam,3,,,,,,,,
+,13,2026,5/1/2026,,,TraChat,GD_FB_CHA 002,AW Single,Squad 2,,Gam,3,,,,,,,,
+,14,2026,5/1/2026,,,TraChat,GD_FB_CHA 003,AW Single,Squad 2,,Gam,3,,,,,,,,
+,15,2026,5/1/2026,,,TraChat,GD_FB_CHA 004,AW Single,Squad 2,,Gam,3,,,,,,,,
+,16,2026,5/1/2026,,,TraChat,GD_FB_CHA 005,AW Single,Squad 2,,Gam,3,,,,,,,,
+,17,2026,5/1/2026,,,TraChat,GD_FB_CHA 006,AW Single,Squad 2,,Gam,3,,,,,,,,
+,18,2026,5/1/2026,,,TraChat,GD_FB_CHA 007,AW Single,Squad 2,,Gam,3,,,,,,,,
+,19,2026,5/1/2026,,,TraChat,GD_FB_CHA 008,AW Single,Squad 2,,Gam,3,,,,,,,,
+,20,2026,5/1/2026,,,TraChat,GD_FB_CHA 009,AW Single,Squad 2,,Gam,3,,,,,,,,
+,21,2026,5/1/2026,,,TraChat,GD_FB_CHA 010,AW Album,Squad 2,,Gam,5,,,,,,,,
+,22,2026,5/1/2026,,,TraChat,GD_FB_CHA 011,AW Single,Squad 2,,Gam,3,,,,,,,,
+ด่วนที่สุด,1,2026,5/1/2026,Operation,,Redbull,CT_FB_RED 001,CT Single,Squad 3,งานง่าย,TonPalm,2,1,None,1-5-2026,1-5-2026,7-5-2026,-6,Doing,
+กลาง,2,2026,5/1/2026,Operation,,Redbull,CT_FB_RED 002,CT Single,Squad 3,งานกลาง,TonPalm,2,2,None,1-5-2026,1-5-2026,7-5-2026,-6,Hold,
+รอได้,3,2026,5/1/2026,Operation,,Redbull,CT_FB_RED 003,CT Single,Squad 3,งานยาก,TonPalm,2,1,None,1-5-2026,1-5-2026,7-5-2026,-6,Client Review,
+ด่วนที่สุด,4,2026,5/1/2026,Operation,,Redbull,CT_FB_RED 004,CT Single,Squad 3,งานกลาง,TonPalm,2,1,None,1-5-2026,1-5-2026,7-5-2026,-6,Client Approved,
+,5,2026,5/1/2026,,,Redbull,CT_FB_RED 005,CT Motion,Squad 3,,TonPalm,3,,,,,,,,
+,6,2026,5/1/2026,,,Redbull,CT_FB_RED 006,CT Motion,Squad 3,,TonPalm,3,,,,,,,,
+,7,2026,5/1/2026,,,Redbull,CT_FB_RED 007,CT Text,Squad 3,,TonPalm,0.5,,,,,,,,
+,8,2026,5/1/2026,,,Redbull,CT_FB_RED 008,CT Text,Squad 3,,TonPalm,0.5,,,,,,,,
+,9,2026,5/1/2026,,,Redbull,CT_FB_RED 009,CT Text,Squad 3,,TonPalm,0.5,,,,,,,,
+,10,2026,5/1/2026,,,Redbull,CT_FB_RED 010,CT Text,Squad 3,,TonPalm,0.5,,,,,,,,
+,11,2026,5/1/2026,,,Redbull,CT_FB_RED 011,CT Text,Squad 3,,TonPalm,0.5,,,,,,,,
+,12,2026,5/1/2026,,,Redbull,CT_FB_RED 012,CT Text,Squad 3,,TonPalm,0.5,,,,,,,,
+,13,2026,5/1/2026,,,Redbull,CT_FB_RED 013,CT Text,Squad 3,,TonPalm,0.5,,,,,,,,
+,14,2026,5/1/2026,,,Redbull,CT_FB_RED 014,CT Text,Squad 3,,TonPalm,0.5,,,,,,,,
+,15,2026,5/1/2026,,,Redbull,CT_FB_RED 015,CT Text,Squad 3,,TonPalm,0.5,,,,,,,,
+,16,2026,5/1/2026,,,Redbull,CT_FB_RED 016,CT Text,Squad 3,,TonPalm,0.5,,,,,,,,
+,17,2026,5/1/2026,,,Redbull,CT_FB_RED 017,CT Text,Squad 3,,TonPalm,0.5,,,,,,,,
+,18,2026,5/1/2026,,,Redbull,CT_FB_RED 018,CT Text,Squad 3,,TonPalm,0.5,,,,,,,,
+,19,2026,5/1/2026,,,Redbull,CT_FB_RED 019,CT Text,Squad 3,,TonPalm,0.5,,,,,,,,
+,20,2026,5/1/2026,,,Redbull,CT_FB_RED 020,CT Text,Squad 3,,TonPalm,0.5,,,,,,,,
+,21,2026,5/1/2026,,,Redbull,CT_FB_RED 021,CT Text,Squad 3,,TonPalm,0.5,,,,,,,,
+,22,2026,5/1/2026,,,Redbull,CT_FB_RED 022,CT Text,Squad 3,,TonPalm,0.5,,,,,,,,
+,23,2026,5/1/2026,,,Redbull,CT_FB_RED 023,CT Text,Squad 3,,TonPalm,0.5,,,,,,,,
+,24,2026,5/1/2026,,,Redbull,CT_FB_RED 024,CT Text,Squad 3,,TonPalm,0.5,,,,,,,,
+,26,2026,5/1/2026,,,Redbull,GD_FB_RED 002,AW Single,Squad 3,,Cake,3,,,,,,,,
+,27,2026,5/1/2026,,,Redbull,GD_FB_RED 003,AW Single,Squad 3,,Cake,3,,,,,,,,
+,28,2026,5/1/2026,,,Redbull,GD_FB_RED 004,AW Single,Squad 3,,Cake,3,,,,,,,,
+,29,2026,5/1/2026,,,Redbull,GD_FB_RED 005,AW Single,Squad 3,,Cake,3,,,,,,,,
+,30,2026,5/1/2026,,,Redbull,GD_FB_RED 006,AW Motion,Squad 3,,Cake,5,,,,,,,,
+,31,2026,5/1/2026,,,Redbull,GD_FB_RED 007,AW Motion,Squad 3,,Cake,5,,,,,,,,
+,32,2026,5/1/2026,,,Redbull,GD_FB_RED 008,AW Animation,Squad 3,,Cake,5,,,,,,,,
+,33,2026,5/1/2026,,,Redbull,GD_FB_RED 009,AW Animation,Squad 3,,Cake,5,,,,,,,,
+ด่วนที่สุด,1,2026,5/1/2026,Operation,,MajorGroup,CT_FB_MAJ 001,CT Single,Squad 3,งานง่าย,Art,2,1,None,1-5-2026,1-5-2026,7-5-2026,-6,Doing,
+กลาง,2,2026,5/1/2026,Operation,,MajorGroup,CT_FB_MAJ 002,CT Single,Squad 3,งานกลาง,Art,2,2,None,1-5-2026,1-5-2026,7-5-2026,-6,Hold,
+รอได้,3,2026,5/1/2026,Operation,,MajorGroup,CT_FB_MAJ 003,CT Single,Squad 3,งานยาก,Art,2,2,None,1-5-2026,1-5-2026,7-5-2026,-6,Client Review,
+รอได้,4,2026,5/1/2026,Operation,,MajorGroup,CT_FB_MAJ 004,CT Single,Squad 3,งานง่าย,Art,2,2,None,1-5-2026,1-5-2026,7-5-2026,-6,Client Approved,
+,5,2026,5/1/2026,,,MajorGroup,CT_FB_MAJ 005,CT Single,Squad 3,,Art,2,,,,,,,,
+,6,2026,5/1/2026,,,MajorGroup,CT_FB_MAJ 006,CT Single,Squad 3,,Art,2,,,,,,,,
+,7,2026,5/1/2026,,,MajorGroup,CT_FB_MAJ 007,CT Single,Squad 3,,Art,2,,,,,,,,
+,8,2026,5/1/2026,,,MajorGroup,CT_FB_MAJ 008,CT Single,Squad 3,,Art,2,,,,,,,,
+,9,2026,5/1/2026,,,MajorGroup,CT_FB_MAJ 009,CT Single,Squad 3,,Art,2,,,,,,,,
+,10,2026,5/1/2026,,,MajorGroup,CT_FB_MAJ 010,CT Single,Squad 3,,Art,2,,,,,,,,
+,11,2026,5/1/2026,,,MajorGroup,CT_FB_MAJ 011,CT Single,Squad 3,,Art,2,,,,,,,,
+,12,2026,5/1/2026,,,MajorGroup,CT_FB_MAJ 012,CT Single,Squad 3,,Gam,2,,,,,,,,
+,13,2026,5/1/2026,,,MajorGroup,GD_FB_MAJ 001,AW Single,Squad 3,,Gam,3,,,,,,,,
+,14,2026,5/1/2026,,,MajorGroup,GD_FB_MAJ 002,AW Single,Squad 3,,Gam,3,,,,,,,,
+,15,2026,5/1/2026,,,MajorGroup,GD_FB_MAJ 003,AW Single,Squad 3,,Gam,3,,,,,,,,
+,16,2026,5/1/2026,,,MajorGroup,GD_FB_MAJ 004,AW Single,Squad 3,,Gam,3,,,,,,,,
+,17,2026,5/1/2026,,,MajorGroup,GD_FB_MAJ 005,AW Single,Squad 3,,Gam,3,,,,,,,,
+,18,2026,5/1/2026,,,MajorGroup,GD_FB_MAJ 006,AW Single,Squad 3,,Gam,3,,,,,,,,
+,19,2026,5/1/2026,,,MajorGroup,GD_FB_MAJ 007,AW Single,Squad 3,,Gam,3,,,,,,,,
+,20,2026,5/1/2026,,,MajorGroup,GD_FB_MAJ 008,AW Single,Squad 3,,Gam,3,,,,,,,,
+,21,2026,5/1/2026,,,MajorGroup,GD_FB_MAJ 009,AW Single,Squad 3,,Gam,3,,,,,,,,
+,22,2026,5/1/2026,,,MajorGroup,GD_FB_MAJ 010,AW Single,Squad 3,,Gam,3,,,,,,,,
+,23,2026,5/1/2026,,,MajorGroup,GD_FB_MAJ 011,AW Single,Squad 3,,Gam,3,,,,,,,,
+,24,2026,5/1/2026,,,MajorGroup,GD_FB_MAJ 012,AW Single,Squad 3,,Gam,3,,,,,,,,
+ด่วนที่สุด,1,2026,5/1/2026,Operation,,BabyLove,CT_FB_BBL 001,CT Single,Squad 3,งานง่าย,TonPalm,2,1,None,1-5-2026,1-5-2026,7-5-2026,-6,Doing,
+กลาง,2,2026,5/1/2026,Operation,,BabyLove,CT_FB_BBL 002,CT Single,Squad 3,งานกลาง,TonPalm,2,2,None,1-5-2026,1-5-2026,7-5-2026,-6,Hold,
+รอได้,3,2026,5/1/2026,Operation,,BabyLove,CT_FB_BBL 003,CT Single,Squad 3,งานยาก,TonPalm,2,0.5,None,1-5-2026,1-5-2026,7-5-2026,-6,Client Review,
+ด่วนที่สุด,4,2026,5/1/2026,Operation,,BabyLove,CT_FB_BBL 004,CT Single,Squad 3,งานกลาง,TonPalm,2,0.5,None,1-5-2026,1-5-2026,7-5-2026,-6,Client Approved,
+,5,2026,5/1/2026,,,BabyLove,CT_FB_BBL 005,CT Single,Squad 3,,TonPalm,2,,,,,,,,
+,6,2026,5/1/2026,,,BabyLove,CT_FB_BBL 006,CT Single,Squad 3,,TonPalm,2,,,,,,,,
+,7,2026,5/1/2026,,,BabyLove,CT_FB_BBL 007,CT Album,Squad 3,,TonPalm,3,,,,,,,,
+,8,2026,5/1/2026,,,BabyLove,CT_FB_BBL 008,CT Album,Squad 3,,TonPalm,3,,,,,,,,
+,9,2026,5/1/2026,,,BabyLove,CT_FB_BBL 009,CT Motion,Squad 3,,TonPalm,3,,,,,,,,
+,10,2026,5/1/2026,,,BabyLove,CT_FB_BBL 010,CT Motion,Squad 3,,TonPalm,3,,,,,,,,
+,11,2026,5/1/2026,,,BabyLove,GD_FB_BBL001,AW Single,Squad 3,,Cake,3,,,,,,,,
+,12,2026,5/1/2026,,,BabyLove,GD_FB_BBL002,AW Single,Squad 3,,Cake,3,,,,,,,,
+,13,2026,5/1/2026,,,BabyLove,GD_FB_BBL003,AW Single,Squad 3,,Cake,3,,,,,,,,
+,14,2026,5/1/2026,,,BabyLove,GD_FB_BBL004,AW Single,Squad 3,,Cake,3,,,,,,,,
+,15,2026,5/1/2026,,,BabyLove,GD_FB_BBL005,AW Single,Squad 3,,Cake,3,,,,,,,,
+,16,2026,5/1/2026,,,BabyLove,GD_FB_BBL006,AW Single,Squad 3,,Cake,3,,,,,,,,
+,17,2026,5/1/2026,,,BabyLove,GD_FB_BBL007,AW Album,Squad 3,,Cake,5,,,,,,,,
+,18,2026,5/1/2026,,,BabyLove,GD_FB_BBL008,AW Album,Squad 3,,Cake,5,,,,,,,,
+,19,2026,5/1/2026,,,BabyLove,GD_FB_BBL009,AW Motion,Squad 3,,Cake,5,,,,,,,,
+,20,2026,5/1/2026,,,BabyLove,GD_FB_BBL010,AW Motion,Squad 3,,Cake,5,,,,,,,,
+,21,2026,5/1/2026,,,BabyLove,GD_FB_BBL011,AW Animation,Squad 3,,Cake,5,,,,,,,,
+,22,2026,5/1/2026,,,BabyLove,GD_FB_BBL012,AW Animation,Squad 3,,Cake,5,,,,,,,,
+,23,2026,5/1/2026,,,BabyLove,CT_TT_BBL 001,MT Pre-Pro,Squad 3,,Bank,2,,,,,,,,
+,24,2026,5/1/2026,,,BabyLove,CT_TT_BBL 002,MT Pre-Pro,Squad 3,,Bank,2,,,,,,,,
+,25,2026,5/1/2026,,,BabyLove,CT_TT_BBL 003,MT Pre-Pro,Squad 3,,Bank,2,,,,,,,,
+,26,2026,5/1/2026,,,BabyLove,CT_TT_BBL 004,MT Pre-Pro,Squad 3,,Bank,2,,,,,,,,
+,27,2026,5/1/2026,,,BabyLove,CT_TT_BBL 005,MT Pre-Pro,Squad 3,,Bank,2,,,,,,,,
+,28,2026,5/1/2026,,,BabyLove,SH_TT_BBL 001,MT Shooting,Squad 3,,Bank,2,,,,,,,,
+,29,2026,5/1/2026,,,BabyLove,SH_TT_BBL 002,MT Shooting,Squad 3,,Bank,2,,,,,,,,
+,30,2026,5/1/2026,,,BabyLove,SH_TT_BBL 003,MT Shooting,Squad 3,,Bank,2,,,,,,,,
+,31,2026,5/1/2026,,,BabyLove,SH_TT_BBL 004,MT Shooting,Squad 3,,Bank,2,,,,,,,,
+,32,2026,5/1/2026,,,BabyLove,SH_TT_BBL 005,MT Shooting,Squad 3,,Bank,2,,,,,,,,
+,33,2026,5/1/2026,,,BabyLove,ED_TT_BBL 001,MT Editor,Squad 3,,Bank,2,,,,,,,,
+,34,2026,5/1/2026,,,BabyLove,ED_TT_BBL 002,MT Editor,Squad 3,,Bank,2,,,,,,,,
+,35,2026,5/1/2026,,,BabyLove,ED_TT_BBL 003,MT Editor,Squad 3,,Bank,2,,,,,,,,
+,36,2026,5/1/2026,,,BabyLove,ED_TT_BBL 004,MT Editor,Squad 3,,Bank,2,,,,,,,,
+,37,2026,5/1/2026,,,BabyLove,ED_TT_BBL 005,MT Editor,Squad 3,,Bank,2,,,,,,,,
+ด่วนที่สุด,1,2026,5/1/2026,Operation,,KungNum,CT_FB_KUN 001,CT Single,Squad 3,งานง่าย,TonPalm,2,1,None,1-5-2026,1-5-2026,7-5-2026,-6,Doing,
+กลาง,2,2026,5/1/2026,Operation,,KungNum,CT_FB_KUN 002,CT Single,Squad 3,งานกลาง,TonPalm,2,2,None,1-5-2026,1-5-2026,7-5-2026,-6,Hold,
+รอได้,3,2026,5/1/2026,Operation,,KungNum,CT_FB_KUN 003,CT Single,Squad 3,งานยาก,TonPalm,2,1,None,1-5-2026,1-5-2026,7-5-2026,-6,Client Review,
+กลาง,4,2026,5/1/2026,Operation,,KungNum,CT_FB_KUN 004,CT Single,Squad 3,งานง่าย,TonPalm,2,1,None,1-5-2026,1-5-2026,7-5-2026,-6,Client Approved,
+,5,2026,5/1/2026,,,KungNum,CT_FB_KUN 005,CT Single,Squad 3,,TonPalm,2,,,,,,,,
+,6,2026,5/1/2026,,,KungNum,CT_FB_KUN 006,CT Motion,Squad 3,,TonPalm,3,,,,,,,,
+,7,2026,5/1/2026,,,KungNum,GD_FB_KUN 001,AW Single,Squad 3,,Waew,3,,,,,,,,
+,8,2026,5/1/2026,,,KungNum,GD_FB_KUN 002,AW Single,Squad 3,,Waew,3,,,,,,,,
+,9,2026,5/1/2026,,,KungNum,GD_FB_KUN 003,AW Single,Squad 3,,Waew,3,,,,,,,,
+,10,2026,5/1/2026,,,KungNum,GD_FB_KUN 004,AW Single,Squad 3,,Waew,3,,,,,,,,
+,11,2026,5/1/2026,,,KungNum,GD_FB_KUN 005,AW Single,Squad 3,,Waew,3,,,,,,,,
+,12,2026,5/1/2026,,,KungNum,GD_FB_KUN 006,AW Motion,Squad 3,,Waew,5,,,,,,,,
+,13,2026,5/1/2026,,,KungNum,GD_FB_KUN 007,AW Animation,Squad 3,,Waew,5,,,,,,,,
+ด่วนที่สุด,1,2026,5/1/2026,Operation,,SEALECT,CT_FB_SEA 001,CT Single,Squad 4,งานง่าย,Freelance,2,1,None,1-5-2026,1-5-2026,7-5-2026,-6,Doing,
+กลาง,2,2026,5/1/2026,Operation,,SEALECT,CT_FB_SEA 002,CT Single,Squad 4,งานกลาง,Freelance,2,2,None,1-5-2026,1-5-2026,7-5-2026,-6,Hold,
+รอได้,3,2026,5/1/2026,Operation,,SEALECT,CT_FB_SEA 003,CT Single,Squad 4,งานยาก,Freelance,2,2,None,1-5-2026,1-5-2026,7-5-2026,-6,Client Review,
+ด่วนที่สุด,4,2026,5/1/2026,Operation,,SEALECT,CT_FB_SEA 004,CT Single,Squad 4,งานกลาง,Freelance,2,2,None,1-5-2026,1-5-2026,7-5-2026,-6,Client Approved,
+,5,2026,5/1/2026,,,SEALECT,CT_FB_SEA 005,CT Album,Squad 4,,Freelance,3,,,,,,,,
+,6,2026,5/1/2026,,,SEALECT,CT_FB_SEA 006,CT Album,Squad 4,,Freelance,3,,,,,,,,
+,7,2026,5/1/2026,,,SEALECT,GD_FB_SEA 001,AW Single,Squad 4,,Waew,3,,,,,,,,
+,8,2026,5/1/2026,,,SEALECT,GD_FB_SEA 002,AW Single,Squad 4,,Waew,3,,,,,,,,
+,9,2026,5/1/2026,,,SEALECT,GD_FB_SEA 003,AW Single,Squad 4,,Waew,3,,,,,,,,
+,10,2026,5/1/2026,,,SEALECT,GD_FB_SEA 004,AW Single,Squad 4,,Waew,3,,,,,,,,
+,11,2026,5/1/2026,,,SEALECT,GD_FB_SEA 005,AW Album,Squad 4,,Waew,5,,,,,,,,
+,12,2026,5/1/2026,,,SEALECT,GD_FB_SEA 006,AW Album,Squad 4,,Waew,5,,,,,,,,
+,13,2026,5/1/2026,,,SEALECT,MT_TT_SEA 001,MT Pre-Pro,Squad 4,,Freelance,2,,,,,,,,
+,14,2026,5/1/2026,,,SEALECT,MT_TT_SEA 002,MT Pre-Pro,Squad 4,,Freelance,2,,,,,,,,
+,15,2026,5/1/2026,,,SEALECT,MT_TT_SEA 003,MT Pre-Pro,Squad 4,,Freelance,2,,,,,,,,
+,16,2026,5/1/2026,,,SEALECT,MT_TT_SEA 004,MT Pre-Pro,Squad 4,,Freelance,2,,,,,,,,
+,17,2026,5/1/2026,,,SEALECT,SH_TT_SEA 001,MT Shooting,Squad 4,,Freelance,2,,,,,,,,
+,18,2026,5/1/2026,,,SEALECT,SH_TT_SEA 002,MT Shooting,Squad 4,,Freelance,2,,,,,,,,
+,19,2026,5/1/2026,,,SEALECT,SH_TT_SEA 003,MT Shooting,Squad 4,,Freelance,2,,,,,,,,
+,20,2026,5/1/2026,,,SEALECT,SH_TT_SEA 004,MT Shooting,Squad 4,,Freelance,2,,,,,,,,
+,21,2026,5/1/2026,,,SEALECT,ED_TT_SEA 001,MT Editor,Squad 4,,Bank,2,,,,,,,,
+,22,2026,5/1/2026,,,SEALECT,ED_TT_SEA 002,MT Editor,Squad 4,,Bank,2,,,,,,,,
+,23,2026,5/1/2026,,,SEALECT,ED_TT_SEA 003,MT Editor,Squad 4,,Bank,2,,,,,,,,
+,24,2026,5/1/2026,,,SEALECT,ED_TT_SEA 004,MT Editor,Squad 4,,Bank,2,,,,,,,,
+ด่วนที่สุด,1,2026,5/1/2026,Operation,,SPM,CT_FB_SPM 001,CT Single,Squad 4,งานง่าย,Waew,2,1,None,1-5-2026,1-5-2026,7-5-2026,-6,Client Review,
+กลาง,2,2026,5/1/2026,Operation,,SPM,CT_FB_SPM 002,CT Single,Squad 4,งานกลาง,Waew,2,2,None,1-5-2026,1-5-2026,7-5-2026,-6,Client Review,
+รอได้,3,2026,5/1/2026,Operation,,SPM,CT_FB_SPM 003,CT Single,Squad 4,งานยาก,Waew,2,0.5,None,1-5-2026,1-5-2026,7-5-2026,-6,Client Review,
+ด่วนที่สุด,4,2026,5/1/2026,Operation,,SPM,GD_FB_SPM 001,AW Single,Squad 4,งานง่าย,Waew,3,0.5,None,2-5-2026,2-5-2026,8-5-2026,-6,Client Review,
+,5,2026,5/1/2026,,,SPM,GD_FB_SPM 002,AW Single,Squad 4,,Waew,3,,,,,,,,
+,6,2026,5/1/2026,,,SPM,GD_FB_SPM 003,AW Single,Squad 4,,Waew,3,,,,,,,,
+,7,2026,5/1/2026,,,SPM,CT_TT_SPM 001,MT Pre-Pro,Squad 4,,Bank,2,,,,,,,,
+,8,2026,5/1/2026,,,SPM,CT_TT_SPM 002,MT Shooting,Squad 4,,Bank,2,,,,,,,,
+,9,2026,5/1/2026,,,SPM,CT_TT_SPM 003,MT Editor,Squad 4,,Bank,2,,,,,,,,
+ด่วนที่สุด,1,2026,5/1/2026,Operation,,CCC,CT_FB_CCC 001,CT Single,Squad 4,งานง่าย,Art,2,1,None,1-5-2026,1-5-2026,7-5-2026,-6,Doing,
+กลาง,2,2026,5/1/2026,Operation,,CCC,CT_FB_CCC 002,CT Single,Squad 4,งานกลาง,Art,2,2,None,1-5-2026,1-5-2026,7-5-2026,-6,Doing,
+รอได้,3,2026,5/1/2026,Operation,,CCC,CT_FB_CCC 003,CT Single,Squad 4,งานยาก,Art,2,0.5,None,1-5-2026,1-5-2026,7-5-2026,-6,Doing,
+กลาง,4,2026,5/1/2026,Operation,,CCC,CT_FB_CCC 004,CT Single,Squad 4,งานง่าย,Art,2,0.5,None,2-5-2026,2-5-2026,8-5-2026,-6,Doing,
+,5,2026,5/1/2026,,,CCC,CT_FB_CCC 005,CT Single,Squad 4,,Art,2,,,,,,,,
+,6,2026,5/1/2026,,,CCC,CT_FB_CCC 006,CT Single,Squad 4,,Art,2,,,,,,,,
+,7,2026,5/1/2026,,,CCC,CT_FB_CCC 007,CT Single,Squad 4,,Art,2,,,,,,,,
+,8,2026,5/1/2026,,,CCC,CT_FB_CCC 008,CT Single,Squad 4,,Art,2,,,,,,,,
+,9,2026,5/1/2026,,,CCC,CT_FB_CCC 009,CT Single,Squad 4,,Art,2,,,,,,,,
+,10,2026,5/1/2026,,,CCC,CT_FB_CCC 010,CT Single,Squad 4,,Art,2,,,,,,,,
+,11,2026,5/1/2026,,,CCC,CT_FB_CCC 011,CT Single,Squad 4,,Art,2,,,,,,,,
+,12,2026,5/1/2026,,,CCC,CT_FB_CCC 012,CT Single,Squad 4,,Art,2,,,,,,,,
+,13,2026,5/1/2026,,,CCC,CT_FB_CCC 013,CT Single,Squad 4,,Art,2,,,,,,,,
+,14,2026,5/1/2026,,,CCC,CT_FB_CCC 014,CT Single,Squad 4,,Art,2,,,,,,,,
+,15,2026,5/1/2026,,,CCC,CT_FB_CCC 015,CT Single,Squad 4,,Art,2,,,,,,,,
+,16,2026,5/1/2026,,,CCC,CT_FB_CCC 016,CT Single,Squad 4,,Art,2,,,,,,,,
+,17,2026,5/1/2026,,,CCC,CT_FB_CCC 017,CT Single,Squad 4,,Art,2,,,,,,,,
+,18,2026,5/1/2026,,,CCC,CT_FB_CCC 018,CT Single,Squad 4,,Art,2,,,,,,,,
+,19,2026,5/1/2026,,,CCC,CT_FB_CCC 019,CT Single,Squad 4,,Art,2,,,,,,,,
+,20,2026,5/1/2026,,,CCC,CT_FB_CCC 020,CT Single,Squad 4,,Art,2,,,,,,,,
+,21,2026,5/1/2026,,,CCC,CT_FB_CCC 021,CT Single,Squad 4,,Art,2,,,,,,,,
+,22,2026,5/1/2026,,,CCC,CT_FB_CCC 022,CT Single,Squad 4,,Art,2,,,,,,,,
+,23,2026,5/1/2026,,,CCC,CT_FB_CCC 023,CT Single,Squad 4,,Art,2,,,,,,,,
+,24,2026,5/1/2026,,,CCC,CT_FB_CCC 024,CT Single,Squad 4,,Art,2,,,,,,,,
+,25,2026,5/1/2026,,,CCC,CT_FB_CCC 025,CT Single,Squad 4,,Art,2,,,,,,,,
+,26,2026,5/1/2026,,,CCC,CT_FB_CCC 026,CT Single,Squad 4,,Art,2,,,,,,,,
+,27,2026,5/1/2026,,,CCC,CT_FB_CCC 027,CT Single,Squad 4,,Art,2,,,,,,,,
+,28,2026,5/1/2026,,,CCC,CT_FB_CCC 028,CT Single,Squad 4,,Art,2,,,,,,,,
+,29,2026,5/1/2026,,,CCC,CT_FB_CCC 029,CT Single,Squad 4,,Art,2,,,,,,,,
+,30,2026,5/1/2026,,,CCC,CT_FB_CCC 030,CT Single,Squad 4,,Art,2,,,,,,,,
+,31,2026,5/1/2026,,,CCC,GD_FB_CCC 001,AW Single,Squad 4,,Beze,3,,,,,,,,
+,32,2026,5/1/2026,,,CCC,GD_FB_CCC 002,AW Single,Squad 4,,Beze,3,,,,,,,,
+,33,2026,5/1/2026,,,CCC,GD_FB_CCC 003,AW Single,Squad 4,,Beze,3,,,,,,,,
+,34,2026,5/1/2026,,,CCC,GD_FB_CCC 004,AW Single,Squad 4,,Beze,3,,,,,,,,
+,35,2026,5/1/2026,,,CCC,GD_FB_CCC 005,AW Single,Squad 4,,Beze,3,,,,,,,,
+,36,2026,5/1/2026,,,CCC,GD_FB_CCC 006,AW Single,Squad 4,,Beze,3,,,,,,,,
+,37,2026,5/1/2026,,,CCC,GD_FB_CCC 007,AW Single,Squad 4,,Beze,3,,,,,,,,
+,38,2026,5/1/2026,,,CCC,GD_FB_CCC 008,AW Single,Squad 4,,Beze,3,,,,,,,,
+,39,2026,5/1/2026,,,CCC,GD_FB_CCC 009,AW Single,Squad 4,,Beze,3,,,,,,,,
+,40,2026,5/1/2026,,,CCC,GD_FB_CCC 010,AW Single,Squad 4,,Beze,3,,,,,,,,
+,41,2026,5/1/2026,,,CCC,GD_FB_CCC 011,AW Single,Squad 4,,Beze,3,,,,,,,,
+,42,2026,5/1/2026,,,CCC,GD_FB_CCC 012,AW Single,Squad 4,,Beze,3,,,,,,,,
+,43,2026,5/1/2026,,,CCC,GD_FB_CCC 013,AW Single,Squad 4,,Beze,3,,,,,,,,
+,44,2026,5/1/2026,,,CCC,GD_FB_CCC 014,AW Single,Squad 4,,Beze,3,,,,,,,,
+,45,2026,5/1/2026,,,CCC,GD_FB_CCC 015,AW Single,Squad 4,,Beze,3,,,,,,,,
+,46,2026,5/1/2026,,,CCC,GD_FB_CCC 016,AW Single,Squad 4,,Ting,3,,,,,,,,
+,47,2026,5/1/2026,,,CCC,GD_FB_CCC 017,AW Single,Squad 4,,Ting,3,,,,,,,,
+,48,2026,5/1/2026,,,CCC,GD_FB_CCC 018,AW Single,Squad 4,,Ting,3,,,,,,,,
+,49,2026,5/1/2026,,,CCC,GD_FB_CCC 019,AW Single,Squad 4,,Ting,3,,,,,,,,
+,50,2026,5/1/2026,,,CCC,GD_FB_CCC 020,AW Single,Squad 4,,Ting,3,,,,,,,,
+,51,2026,5/1/2026,,,CCC,GD_FB_CCC 021,AW Single,Squad 4,,Ting,3,,,,,,,,
+,52,2026,5/1/2026,,,CCC,GD_FB_CCC 022,AW Single,Squad 4,,Ting,3,,,,,,,,
+,53,2026,5/1/2026,,,CCC,GD_FB_CCC 023,AW Single,Squad 4,,Ting,3,,,,,,,,
+,54,2026,5/1/2026,,,CCC,GD_FB_CCC 024,AW Single,Squad 4,,Ting,3,,,,,,,,
+,55,2026,5/1/2026,,,CCC,GD_FB_CCC 025,AW Single,Squad 4,,Ting,3,,,,,,,,
+,56,2026,5/1/2026,,,CCC,GD_FB_CCC 026,AW Single,Squad 4,,Ting,3,,,,,,,,
+,57,2026,5/1/2026,,,CCC,GD_FB_CCC 027,AW Single,Squad 4,,Ting,3,,,,,,,,
+,58,2026,5/1/2026,,,CCC,GD_FB_CCC 028,AW Single,Squad 4,,Ting,3,,,,,,,,
+,59,2026,5/1/2026,,,CCC,GD_FB_CCC 029,AW Single,Squad 4,,Ting,3,,,,,,,,
+,60,2026,5/1/2026,,,CCC,GD_FB_CCC 030,AW Single,Squad 4,,Ting,3,,,,,,,,
+,61,2026,5/1/2026,,,CCC,CT_TT_CCC 001,MT Pre-Pro,Squad 4,,Tula,2,,,,,,,,
+,62,2026,5/1/2026,,,CCC,CT_TT_CCC 002,MT Pre-Pro,Squad 4,,Tula,2,,,,,,,,
+,63,2026,5/1/2026,,,CCC,CT_TT_CCC 003,MT Pre-Pro,Squad 4,,Tula,2,,,,,,,,
+,64,2026,5/1/2026,,,CCC,CT_TT_CCC 004,MT Pre-Pro,Squad 4,,Tula,2,,,,,,,,
+,65,2026,5/1/2026,,,CCC,CT_TT_CCC 005,MT Pre-Pro,Squad 4,,Tula,2,,,,,,,,
+,66,2026,5/1/2026,,,CCC,CT_TT_CCC 006,MT Pre-Pro,Squad 4,,Tula,2,,,,,,,,
+,67,2026,5/1/2026,,,CCC,CT_TT_CCC 007,MT Pre-Pro,Squad 4,,Tula,2,,,,,,,,
+,68,2026,5/1/2026,,,CCC,CT_TT_CCC 008,MT Pre-Pro,Squad 4,,Tula,2,,,,,,,,
+,69,2026,5/1/2026,,,CCC,CT_TT_CCC 009,MT Pre-Pro,Squad 4,,Tula,2,,,,,,,,
+,70,2026,5/1/2026,,,CCC,CT_TT_CCC 010,MT Pre-Pro,Squad 4,,Tula,2,,,,,,,,
+,71,2026,5/1/2026,,,CCC,SH_TT_CCC 001,MT Shooting,Squad 4,,Ning,2,,,,,,,,
+,72,2026,5/1/2026,,,CCC,SH_TT_CCC 002,MT Shooting,Squad 4,,Ning,2,,,,,,,,
+,73,2026,5/1/2026,,,CCC,SH_TT_CCC 003,MT Shooting,Squad 4,,Ning,2,,,,,,,,
+,74,2026,5/1/2026,,,CCC,SH_TT_CCC 004,MT Shooting,Squad 4,,Ning,2,,,,,,,,
+,75,2026,5/1/2026,,,CCC,SH_TT_CCC 005,MT Shooting,Squad 4,,Ning,2,,,,,,,,
+,76,2026,5/1/2026,,,CCC,SH_TT_CCC 006,MT Shooting,Squad 4,,Ning,2,,,,,,,,
+,77,2026,5/1/2026,,,CCC,SH_TT_CCC 007,MT Shooting,Squad 4,,Ning,2,,,,,,,,
+,78,2026,5/1/2026,,,CCC,SH_TT_CCC 008,MT Shooting,Squad 4,,Ning,2,,,,,,,,
+,79,2026,5/1/2026,,,CCC,SH_TT_CCC 009,MT Shooting,Squad 4,,Ning,2,,,,,,,,
+,80,2026,5/1/2026,,,CCC,SH_TT_CCC 010,MT Shooting,Squad 4,,Ning,2,,,,,,,,
+,81,2026,5/2/2026,,,CCC,ED_TT_CCC 001,MT Editor,Squad 4,,Ning,2,,,,,,,,
+,82,2026,5/3/2026,,,CCC,ED_TT_CCC 002,MT Editor,Squad 4,,Ning,2,,,,,,,,
+,83,2026,5/4/2026,,,CCC,ED_TT_CCC 003,MT Editor,Squad 4,,Ning,2,,,,,,,,
+,84,2026,5/5/2026,,,CCC,ED_TT_CCC 004,MT Editor,Squad 4,,Ning,2,,,,,,,,
+,85,2026,5/6/2026,,,CCC,ED_TT_CCC 005,MT Editor,Squad 4,,Ning,2,,,,,,,,
+,86,2026,5/7/2026,,,CCC,ED_TT_CCC 006,MT Editor,Squad 4,,Ning,2,,,,,,,,
+,87,2026,5/8/2026,,,CCC,ED_TT_CCC 007,MT Editor,Squad 4,,Ning,2,,,,,,,,
+,88,2026,5/9/2026,,,CCC,ED_TT_CCC 008,MT Editor,Squad 4,,Ning,2,,,,,,,,
+,89,2026,5/10/2026,,,CCC,ED_TT_CCC 009,MT Editor,Squad 4,,Ning,2,,,,,,,,
+,90,2026,5/11/2026,,,CCC,ED_TT_CCC 010,MT Editor,Squad 4,,Ning,2,,,,,,,,
+ด่วนที่สุด,1,2026,5/1/2026,Operation,,PDMO,CT_FB_PDMO 001,CT Single,Squad 4,งานง่าย,Art,2,1,None,1-5-2026,1-5-2026,7-5-2026,-6,Doing,
+กลาง,2,2026,5/1/2026,Operation,,PDMO,CT_FB_PDMO 002,CT Single,Squad 4,งานกลาง,Art,2,2,None,1-5-2026,1-5-2026,7-5-2026,-6,Hold,
+รอได้,3,2026,5/1/2026,Operation,,PDMO,CT_FB_PDMO 003,CT Single,Squad 4,งานยาก,Art,2,1,None,1-5-2026,1-5-2026,7-5-2026,-6,Client Review,
+รอได้,4,2026,5/1/2026,Operation,,PDMO,GD_FB_PDMO 001,AW Single,Squad 4,งานกลาง,Ting,3,1,None,2-5-2026,2-5-2026,8-5-2026,-6,Client Review,
+,5,2026,5/1/2026,,,PDMO,GD_FB_PDMO 002,AW Single,Squad 4,,Ting,3,,,,,,,,
+,6,2026,5/1/2026,,,PDMO,GD_FB_PDMO 003,AW Single,Squad 4,,Ting,3,,,,,,,,
+,7,2026,5/1/2026,,,PDMO,CT_TT_PDMO 001,MT Pre-Pro,Squad 4,,Tula,2,,,,,,,,
+,8,2026,5/1/2026,,,PDMO,CT_TT_PDMO 002,MT Pre-Pro,Squad 4,,Tula,2,,,,,,,,
+,9,2026,5/1/2026,,,PDMO,CT_TT_PDMO 003,MT Pre-Pro,Squad 4,,Tula,2,,,,,,,,
+,10,2026,5/1/2026,,,PDMO,SH_TT_PDMO 001,MT Shooting,Squad 4,,Bank,2,,,,,,,,
+,11,2026,5/1/2026,,,PDMO,SH_TT_PDMO 002,MT Shooting,Squad 4,,Bank,2,,,,,,,,
+,12,2026,5/1/2026,,,PDMO,SH_TT_PDMO 003,MT Shooting,Squad 4,,Bank,2,,,,,,,,
+,13,2026,5/1/2026,,,PDMO,ED_TT_PDMO 001,MT Editor,Squad 4,,Bank,2,,,,,,,,
+,14,2026,5/1/2026,,,PDMO,ED_TT_PDMO 002,MT Editor,Squad 4,,Bank,2,,,,,,,,
+,15,2026,5/1/2026,,,PDMO,ED_TT_PDMO 003,MT Editor,Squad 4,,Bank,2,,,,,,,,`;
+
+/* ============================
+   CONFIG / CONSTANTS
+============================ */
+const HP = {
+  red:'#7A0F0E', red2:'#A02C2C', green:'#1E4A2C', green2:'#2A6840',
+  blue:'#243763', blue2:'#5C7AAE', gold:'#D4B144', goldB:'#FFD700',
+  mustard:'#D4B144', text:'#EDE6D5', dim:'#A89878', mute:'#6E5F45',
+  success:'#3E8E50', warn:'#D4B144', danger:'#A02C2C',
+  sepia:'#8B6B3F', wax:'#8B1A1A', candle:'#FFB347',
+};
+const PALETTE = ['#7A0F0E','#1E4A2C','#243763','#D4B144','#A02C2C','#5C7AAE','#2A6840','#B8941E','#FFB347','#8B6B3F','#FFD700','#3E8E50'];
+
+const FULL_MH_PER_MONTH = 158.4;
+
+/* ============================
+   STATE
+============================ */
+let RAW = [];          // raw rows
+let FILTERED = [];     // filtered
+let CHARTS = {};       // chart instances
+let FILTERS = { year:'', month:'', squad:'', client:'', owner:'', taskType:'', status:'', priority:'', complexity:'', projectType:'' };
+
+/* ============================
+   HELPERS
+============================ */
+const $ = (s, p=document)=>p.querySelector(s);
+const $$ = (s, p=document)=>Array.from(p.querySelectorAll(s));
+const num = v => { const n = parseFloat(v); return isNaN(n)?0:n; };
+const uniq = arr => Array.from(new Set(arr.filter(x=>x!==undefined && x!==null && x!=='')));
+const toast = (msg)=>{const t=$('#toast');t.textContent=msg;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),2400)};
+
+function manualCSVParse(csvText){
+  const lines = csvText.replace(/\r/g,'').split('\n').filter(l=>l.length>0);
+  if(lines.length<=1) return [];
+  const headers = lines[0].split(',').map(h=>h.trim());
+  const out = [];
+  for(let i=1;i<lines.length;i++){
+    const cells = lines[i].split(',');
+    const obj = {};
+    headers.forEach((h,idx)=>{ obj[h] = (cells[idx]??'').trim(); });
+    out.push(obj);
+  }
+  return out;
+}
+function parseCSV(csvText){
+  let data;
+  try{
+    if(typeof Papa !== 'undefined' && Papa.parse){
+      const parsed = Papa.parse(csvText.trim(), { header:true, skipEmptyLines:true });
+      data = parsed.data;
+    } else {
+      data = manualCSVParse(csvText.trim());
+    }
+  } catch(e){
+    console.warn('CSV parse fallback to manual:', e);
+    data = manualCSVParse(csvText.trim());
+  }
+  return data.map(r=>{
+    return {
+      Priority: (r['Priority']||'').trim(),
+      No: r['No']||'',
+      Year: r['Year']||'',
+      Month: r['Month']||'',
+      ProjectType: (r['Project Type']||'').trim(),
+      ProjectID: r['Project ID']||'',
+      Client: (r['Client']||'').trim(),
+      Task: (r['Task']||'').trim(),
+      TaskType: (r['Task Type']||'').trim(),
+      Squad: (r['Squad']||'').trim(),
+      Complexity: (r['Complexity']||'').trim(),
+      Owner: (r['Owner']||'').trim(),
+      EstMH: num(r['Estimated Manhour']),
+      ActMH: num(r['Actual Manhour']),
+      ReviseReason: r['Revise Reason']||'',
+      DoDate: r['Do Date']||'',
+      DueDate: r['Due Date']||'',
+      ActualDueDate: r['Actual Due Date']||'',
+      Diff: r['Diff']?num(r['Diff']):null,
+      Status: (r['Task Status']||'').trim(),
+      Remark: r['Remark']||'',
+    };
+  });
+}
+
+function buildFilterOptions(){
+  const valuesFor = key => uniq(RAW.map(r=>r[key])).sort();
+  return {
+    Year: valuesFor('Year'),
+    Month: valuesFor('Month'),
+    Squad: valuesFor('Squad'),
+    Client: valuesFor('Client'),
+    Owner: valuesFor('Owner'),
+    TaskType: valuesFor('TaskType'),
+    Status: valuesFor('Status'),
+    Priority: valuesFor('Priority'),
+    Complexity: valuesFor('Complexity'),
+    ProjectType: valuesFor('ProjectType'),
+  };
+}
+
+function renderFilters(){
+  const opts = buildFilterOptions();
+  const html = `
+    ${filterSelect('year','Year', opts.Year)}
+    ${filterSelect('month','Month', opts.Month)}
+    ${filterSelect('squad','Squad', opts.Squad)}
+    ${filterSelect('client','Client', opts.Client)}
+    ${filterSelect('owner','Owner', opts.Owner)}
+    ${filterSelect('taskType','Task Type', opts.TaskType)}
+    ${filterSelect('status','Status', opts.Status)}
+    ${filterSelect('priority','Priority', opts.Priority)}
+    ${filterSelect('complexity','Complexity', opts.Complexity)}
+    ${filterSelect('projectType','Project Type', opts.ProjectType)}
+    <div class="filter-group" style="justify-content:flex-end">
+      <label>&nbsp;</label>
+      <button class="btn btn-gold" id="clearFilters">↺ Clear All</button>
+    </div>
+  `;
+  ['#globalFilters','#globalFilters2','#globalFilters3','#globalFilters4','#globalFilters5','#globalFilters6'].forEach(sel=>{
+    const el = $(sel); if(el) el.innerHTML = html;
+  });
+  // Wire up listeners on every filter group
+  $$('.filters select').forEach(s=>{
+    s.addEventListener('change', e=>{
+      const k = e.target.dataset.key;
+      FILTERS[k] = e.target.value;
+      // sync all groups
+      $$(`.filters select[data-key="${k}"]`).forEach(o=>o.value=e.target.value);
+      applyFilters();
+    });
+  });
+  $$('#clearFilters, [id="clearFilters"]').forEach(b=>b.addEventListener('click', ()=>{
+    FILTERS = { year:'', month:'', squad:'', client:'', owner:'', taskType:'', status:'', priority:'', complexity:'', projectType:'' };
+    $$('.filters select').forEach(s=>s.value='');
+    applyFilters();
+  }));
+}
+
+function filterSelect(key,label,values){
+  return `<div class="filter-group">
+    <label>${label}</label>
+    <select data-key="${key}">
+      <option value="">— All —</option>
+      ${values.map(v=>`<option value="${v}">${v}</option>`).join('')}
+    </select>
+  </div>`;
+}
+
+function applyFilters(){
+  FILTERED = RAW.filter(r=>{
+    if(FILTERS.year && String(r.Year)!==FILTERS.year) return false;
+    if(FILTERS.month && r.Month!==FILTERS.month) return false;
+    if(FILTERS.squad && r.Squad!==FILTERS.squad) return false;
+    if(FILTERS.client && r.Client!==FILTERS.client) return false;
+    if(FILTERS.owner && r.Owner!==FILTERS.owner) return false;
+    if(FILTERS.taskType && r.TaskType!==FILTERS.taskType) return false;
+    if(FILTERS.status && r.Status!==FILTERS.status) return false;
+    if(FILTERS.priority && r.Priority!==FILTERS.priority) return false;
+    if(FILTERS.complexity && r.Complexity!==FILTERS.complexity) return false;
+    if(FILTERS.projectType && r.ProjectType!==FILTERS.projectType) return false;
+    return true;
+  });
+  renderAll();
+}
+
+/* ============================
+   AGGREGATIONS
+============================ */
+function groupBy(arr, keyFn){
+  const m = new Map();
+  arr.forEach(r=>{ const k=keyFn(r); if(!m.has(k)) m.set(k,[]); m.get(k).push(r); });
+  return m;
+}
+function sumEst(arr){return arr.reduce((s,r)=>s+r.EstMH,0)}
+function sumAct(arr){return arr.reduce((s,r)=>s+r.ActMH,0)}
+
+function workloadStatus(util){
+  if(util < 80) return {label:'Free', cls:'wl-free', color:HP.blue2, advice:'ว่าง — ต้อง Assign งานเพิ่ม'};
+  if(util <= 100) return {label:'OK', cls:'wl-ok', color:HP.green2, advice:'OK — กำลังพอเหมาะ'};
+  if(util <= 120) return {label:'Overload', cls:'wl-warn', color:HP.gold, advice:'เริ่ม Overload — เริ่มเฝ้าระวัง'};
+  return {label:'Crisis', cls:'wl-danger', color:HP.danger, advice:'ต้องลงไปช่วย — เกินกำลัง'};
+}
+
+function ownerSummary(arr){
+  const map = groupBy(arr, r=>r.Owner||'(Unassigned)');
+  const out = [];
+  map.forEach((rows,owner)=>{
+    const tasks = rows.length;
+    const est = sumEst(rows);
+    const act = sumAct(rows);
+    const done = rows.filter(r=>r.Status==='Done').length;
+    const doing = rows.filter(r=>r.Status==='Doing').length;
+    const hold = rows.filter(r=>r.Status==='Hold').length;
+    const review = rows.filter(r=>r.Status==='Client Review').length;
+    const approved = rows.filter(r=>r.Status==='Client Approved').length;
+    const util = (est / FULL_MH_PER_MONTH) * 100;
+    const squad = uniq(rows.map(r=>r.Squad)).join(', ');
+    const ws = workloadStatus(util);
+    out.push({owner,squad,tasks,est,act,done,doing,hold,review,approved,util,ws,rows});
+  });
+  return out.sort((a,b)=>b.tasks-a.tasks);
+}
+
+/* ============================
+   RENDERERS
+============================ */
+function destroyChart(id){ if(CHARTS[id]){try{CHARTS[id].destroy()}catch(e){} delete CHARTS[id]} }
+function makeChart(id,cfg){
+  destroyChart(id);
+  const el = document.getElementById(id);
+  if(!el) return;
+  if(typeof Chart === 'undefined'){ console.warn('Chart.js not loaded yet, retry...'); return; }
+  try{ CHARTS[id] = new Chart(el, cfg); } catch(e){ console.error('Chart error:', id, e); }
+}
+
+const baseChartOpts = {
+  responsive:true, maintainAspectRatio:false,
+  plugins:{
+    legend:{labels:{color:HP.text, font:{family:'Sarabun', size:11}, padding:12, usePointStyle:true, pointStyle:'rectRounded'}},
+    tooltip:{
+      backgroundColor:'rgba(26,18,8,0.97)',
+      borderColor:HP.gold, borderWidth:1,
+      titleColor:HP.gold, bodyColor:HP.text, padding:12,
+      titleFont:{family:'Cinzel',size:12,weight:'700'},
+      bodyFont:{family:'Sarabun',size:12},
+      cornerRadius:4,
+      displayColors:true,
+    }
+  },
+  scales:{
+    x:{ticks:{color:HP.dim, font:{size:10}}, grid:{color:'rgba(90,63,31,0.2)'}, border:{color:'rgba(212,177,68,0.2)'}},
+    y:{ticks:{color:HP.dim, font:{size:10}}, grid:{color:'rgba(90,63,31,0.2)'}, border:{color:'rgba(212,177,68,0.2)'}}
+  }
+};
+
+function renderAll(){
+  renderOverview();
+  renderClient();
+  renderPerformance();
+  renderSquad();
+  renderIndividual();
+  renderInsights();
+}
+
+/* ---------- OVERVIEW ---------- */
+function renderOverview(){
+  // KPIs
+  const total = FILTERED.length;
+  const est = sumEst(FILTERED);
+  const act = sumAct(FILTERED);
+  const utilAll = est/FULL_MH_PER_MONTH;
+  const done = FILTERED.filter(r=>r.Status==='Done'||r.Status==='Client Approved').length;
+  const onProgress = FILTERED.filter(r=>r.Status==='Doing'||r.Status==='Client Review').length;
+  const hold = FILTERED.filter(r=>r.Status==='Hold').length;
+  const overdue = FILTERED.filter(r=>r.Diff!==null && r.Diff<0).length;
+  const clients = uniq(FILTERED.map(r=>r.Client)).length;
+  const owners = uniq(FILTERED.map(r=>r.Owner)).filter(Boolean).length;
+  const squads = uniq(FILTERED.map(r=>r.Squad)).filter(Boolean).length;
+
+  $('#kpiGrid').innerHTML = `
+    <div class="kpi-card gryff"><div class="kpi-label"><span class="platform-num">9¾</span> Total Tasks</div><div class="kpi-value">${total}</div><div class="kpi-sub">งานทั้งหมดในระบบ</div></div>
+    <div class="kpi-card huff"><div class="kpi-label">⏳ Est. Manhour</div><div class="kpi-value">${est.toFixed(1)}</div><div class="kpi-sub">รวม estimated</div></div>
+    <div class="kpi-card slyth"><div class="kpi-label">🪄 Active People</div><div class="kpi-value">${owners}</div><div class="kpi-sub">${squads} Squads · ${clients} Clients</div></div>
+    <div class="kpi-card raven"><div class="kpi-label">🏆 Done / Approved</div><div class="kpi-value">${done}</div><div class="kpi-sub">งานปิดเรียบร้อย</div></div>
+    <div class="kpi-card gryff"><div class="kpi-label">⚡ On Progress</div><div class="kpi-value">${onProgress}</div><div class="kpi-sub">Doing + Client Review</div></div>
+    <div class="kpi-card huff"><div class="kpi-label">⛓ Hold / Risk</div><div class="kpi-value">${hold}</div><div class="kpi-sub">${overdue} overdue tasks</div></div>
+  `;
+
+  // Squad workload
+  const squadNames = uniq(FILTERED.map(r=>r.Squad).filter(Boolean)).sort();
+  const squadEst = squadNames.map(s=>sumEst(FILTERED.filter(r=>r.Squad===s)));
+  const squadAct = squadNames.map(s=>sumAct(FILTERED.filter(r=>r.Squad===s)));
+  makeChart('chartSquadWorkload', {
+    type:'bar',
+    data:{labels:squadNames, datasets:[
+      {label:'Estimated MH', data:squadEst, backgroundColor:HP.gold, borderColor:HP.gold, borderRadius:6},
+      {label:'Actual MH', data:squadAct, backgroundColor:HP.red2, borderColor:HP.red2, borderRadius:6}
+    ]},
+    options:{...baseChartOpts}
+  });
+
+  // Status breakdown
+  const statuses = ['Doing','Hold','Client Review','Client Approved','Done',''];
+  const sCounts = statuses.map(s=>FILTERED.filter(r=>r.Status===s).length);
+  const sLabels = statuses.map(s=>s||'Backlog');
+  makeChart('chartStatus',{
+    type:'doughnut',
+    data:{labels:sLabels, datasets:[{data:sCounts, backgroundColor:[HP.blue,HP.red2,HP.gold,HP.green2,HP.success,HP.mute], borderWidth:1, borderColor:'#15121F'}]},
+    options:{responsive:true, maintainAspectRatio:false, plugins:baseChartOpts.plugins, cutout:'62%'}
+  });
+
+  // Priority
+  const priorityList = ['ด่วนที่สุด','กลาง','รอได้',''];
+  const pLabels = ['ด่วนที่สุด','กลาง','รอได้','Unassigned'];
+  const pCounts = priorityList.map(p=>FILTERED.filter(r=>r.Priority===p).length);
+  makeChart('chartPriority',{
+    type:'bar',
+    data:{labels:pLabels, datasets:[{label:'Tasks', data:pCounts, backgroundColor:[HP.danger,HP.gold,HP.green2,HP.mute], borderRadius:6}]},
+    options:{...baseChartOpts, indexAxis:'y'}
+  });
+
+  // Complexity
+  const cxList = ['งานง่าย','งานกลาง','งานยาก',''];
+  const cxLabels = ['ง่าย','กลาง','ยาก','Unset'];
+  const cxCounts = cxList.map(c=>FILTERED.filter(r=>r.Complexity===c).length);
+  makeChart('chartComplexity',{
+    type:'bar',
+    data:{labels:cxLabels, datasets:[{label:'Tasks', data:cxCounts, backgroundColor:[HP.green2, HP.gold, HP.danger, HP.mute], borderRadius:6}]},
+    options:{...baseChartOpts}
+  });
+
+  // Crisis table
+  const crisis = FILTERED.filter(r=>r.Status==='Hold' || r.Priority==='ด่วนที่สุด' || (r.Diff!==null && r.Diff<-3))
+    .slice(0,30);
+  $('#tableCrisis tbody').innerHTML = crisis.length===0?
+    `<tr><td colspan="6" class="empty">— ไม่มีงาน Crisis —</td></tr>` :
+    crisis.map(r=>`<tr>
+      <td>${r.Task}</td><td>${r.Client}</td><td>${r.Owner||'-'}</td>
+      <td>${statusChip(r.Status)}</td><td>${priorityChip(r.Priority)}</td>
+      <td style="color:${(r.Diff!==null&&r.Diff<0)?'#FFB4B4':HP.text}">${r.Diff??'-'}</td>
+    </tr>`).join('');
+
+  // Hero table
+  const hero = FILTERED.filter(r=>r.Status==='Done' || r.Status==='Client Approved').slice(0,30);
+  $('#tableHero tbody').innerHTML = hero.length===0?
+    `<tr><td colspan="3" class="empty">— ยังไม่มีงานปิด —</td></tr>` :
+    hero.map(r=>`<tr><td>${r.Task}</td><td>${r.Owner||'-'}</td><td>${statusChip(r.Status)}</td></tr>`).join('');
+}
+
+function statusChip(s){
+  if(!s) return `<span class="chip gray">🎩 Backlog</span>`;
+  const cls = {Doing:'doing','Hold':'hold','Client Review':'review','Client Approved':'approved','Done':'done'}[s] || 'gray';
+  let icon = '';
+  if(s==='Done') icon = '<span class="snitch">🏆</span> ';
+  else if(s==='Client Approved') icon = '<span class="snitch">✨</span> ';
+  else if(s==='Hold') icon = '⛓ ';
+  else if(s==='Doing') icon = '⚡ ';
+  else if(s==='Client Review') icon = '📜 ';
+  return `<span class="chip ${cls}">${icon}${s}</span>`;
+}
+function priorityChip(p){
+  if(!p) return `<span class="chip gray">-</span>`;
+  const cls = p==='ด่วนที่สุด'?'urgent': p==='กลาง'?'medium':'low';
+  return `<span class="chip ${cls}">${p}</span>`;
+}
+
+/* ---------- CLIENT WORK ---------- */
+function renderClient(){
+  const clients = uniq(FILTERED.map(r=>r.Client));
+  const totalClients = clients.length;
+  const totalTasks = FILTERED.length;
+  const avgPerClient = totalClients?Math.round(totalTasks/totalClients):0;
+  const totalEst = sumEst(FILTERED);
+
+  $('#clientKpi').innerHTML = `
+    <div class="kpi-card gryff"><div class="kpi-label">Total Clients</div><div class="kpi-value">${totalClients}</div><div class="kpi-sub">แบรนด์ที่ active</div></div>
+    <div class="kpi-card huff"><div class="kpi-label">Avg Tasks / Client</div><div class="kpi-value">${avgPerClient}</div><div class="kpi-sub">โดยเฉลี่ยต่อเจ้า</div></div>
+    <div class="kpi-card slyth"><div class="kpi-label">Total Est MH</div><div class="kpi-value">${totalEst.toFixed(1)}</div><div class="kpi-sub">รวมงานลูกค้า</div></div>
+    <div class="kpi-card raven"><div class="kpi-label">Top Client</div><div class="kpi-value" style="font-size:18px">${topClient()}</div><div class="kpi-sub">งานเยอะที่สุด</div></div>
+  `;
+
+  const cMap = groupBy(FILTERED, r=>r.Client);
+  const clientStats = [];
+  cMap.forEach((rows,c)=>clientStats.push({client:c, tasks:rows.length, est:sumEst(rows), squads:uniq(rows.map(r=>r.Squad)).join(', '), rows}));
+  clientStats.sort((a,b)=>b.tasks-a.tasks);
+
+  // chart tasks per client
+  makeChart('chartClientTasks',{
+    type:'bar',
+    data:{
+      labels:clientStats.map(c=>c.client),
+      datasets:[{label:'Tasks', data:clientStats.map(c=>c.tasks), backgroundColor:clientStats.map((_,i)=>PALETTE[i%PALETTE.length]), borderRadius:6}]
+    },
+    options:{...baseChartOpts, indexAxis:'y'}
+  });
+  makeChart('chartClientManhour',{
+    type:'bar',
+    data:{
+      labels:clientStats.map(c=>c.client),
+      datasets:[{label:'Est. MH', data:clientStats.map(c=>c.est), backgroundColor:HP.gold, borderRadius:6}]
+    },
+    options:{...baseChartOpts, indexAxis:'y'}
+  });
+
+  // matrix
+  const taskTypes = uniq(FILTERED.map(r=>r.TaskType)).filter(Boolean).sort();
+  let mhtml = `<thead><tr><th>Client</th>${taskTypes.map(t=>`<th>${t}</th>`).join('')}<th>Total</th></tr></thead><tbody>`;
+  clientStats.forEach(c=>{
+    mhtml += `<tr><td><b>${c.client}</b></td>`;
+    taskTypes.forEach(t=>{
+      const cnt = c.rows.filter(r=>r.TaskType===t).length;
+      const intensity = Math.min(cnt/8, 1);
+      const bg = `rgba(212,177,68,${intensity*0.5})`;
+      mhtml += `<td style="background:${bg};text-align:center">${cnt||''}</td>`;
+    });
+    mhtml += `<td style="text-align:center"><b>${c.tasks}</b></td></tr>`;
+  });
+  mhtml += `</tbody>`;
+  $('#tableClientMatrix').innerHTML = mhtml;
+
+  // status by client (stacked)
+  const statuses = ['Doing','Hold','Client Review','Client Approved','Done',''];
+  const datasets = statuses.map((s,i)=>({
+    label: s||'Backlog',
+    data: clientStats.map(c=>c.rows.filter(r=>r.Status===s).length),
+    backgroundColor:[HP.blue,HP.red2,HP.gold,HP.green2,HP.success,HP.mute][i],
+    borderRadius:4, borderWidth:0,
+  }));
+  makeChart('chartClientStatus',{
+    type:'bar', data:{labels:clientStats.map(c=>c.client), datasets},
+    options:{...baseChartOpts, indexAxis:'y',
+      scales:{x:{stacked:true, ticks:{color:HP.dim}, grid:{color:'rgba(58,47,74,0.25)'}}, y:{stacked:true, ticks:{color:HP.dim}, grid:{color:'rgba(58,47,74,0.25)'}}}
+    }
+  });
+
+  // top10 table
+  $('#tableTopClients tbody').innerHTML = clientStats.slice(0,10).map((c,i)=>`<tr>
+    <td>${i+1}</td><td><b>${c.client}</b></td><td>${c.tasks}</td><td>${c.est.toFixed(1)}</td><td>${c.squads}</td>
+  </tr>`).join('');
+}
+function topClient(){
+  const m = groupBy(FILTERED, r=>r.Client);
+  let top = '-'; let max=0;
+  m.forEach((rows,c)=>{ if(rows.length>max){max=rows.length;top=c} });
+  return top;
+}
+
+/* ---------- PERFORMANCE ---------- */
+function renderPerformance(){
+  const totalEst = sumEst(FILTERED);
+  const totalAct = sumAct(FILTERED);
+  const efficiency = totalEst?(totalAct/totalEst)*100:0;
+  const ontime = FILTERED.filter(r=>r.Diff!==null && r.Diff>=0).length;
+  const overdue = FILTERED.filter(r=>r.Diff!==null && r.Diff<0).length;
+  const ontimeRate = (ontime+overdue)?(ontime/(ontime+overdue)*100):0;
+  const owners = uniq(FILTERED.map(r=>r.Owner)).filter(Boolean);
+  const avgPerPerson = owners.length?Math.round(FILTERED.length/owners.length):0;
+
+  $('#perfKpi').innerHTML = `
+    <div class="kpi-card gryff"><div class="kpi-label">Total Est MH</div><div class="kpi-value">${totalEst.toFixed(1)}</div><div class="kpi-sub">เวลาที่ตั้งใจ</div></div>
+    <div class="kpi-card huff"><div class="kpi-label">Total Actual MH</div><div class="kpi-value">${totalAct.toFixed(1)}</div><div class="kpi-sub">เวลาที่ใช้จริง</div></div>
+    <div class="kpi-card slyth"><div class="kpi-label">Efficiency</div><div class="kpi-value">${efficiency.toFixed(0)}%</div><div class="kpi-sub">Actual / Estimated</div></div>
+    <div class="kpi-card raven"><div class="kpi-label">On-time Rate</div><div class="kpi-value">${ontimeRate.toFixed(0)}%</div><div class="kpi-sub">${ontime}/${ontime+overdue} ส่งตรง</div></div>
+    <div class="kpi-card gryff"><div class="kpi-label">Avg Tasks/Person</div><div class="kpi-value">${avgPerPerson}</div><div class="kpi-sub">${owners.length} คนกำลังทำงาน</div></div>
+    <div class="kpi-card huff"><div class="kpi-label">Overdue</div><div class="kpi-value">${overdue}</div><div class="kpi-sub">งานเลย Due Date</div></div>
+  `;
+
+  // Manhour timeline by Do Date
+  const dateMap = new Map();
+  FILTERED.forEach(r=>{
+    if(!r.DoDate) return;
+    const k = r.DoDate;
+    if(!dateMap.has(k)) dateMap.set(k,{est:0,act:0});
+    const o = dateMap.get(k); o.est+=r.EstMH; o.act+=r.ActMH;
+  });
+  const dates = Array.from(dateMap.keys()).sort((a,b)=>{
+    const pa = a.split('-').map(Number); const pb = b.split('-').map(Number);
+    return new Date(pa[2],pa[1]-1,pa[0]) - new Date(pb[2],pb[1]-1,pb[0]);
+  });
+  makeChart('chartManhourTimeline',{
+    type:'line',
+    data:{labels:dates, datasets:[
+      {label:'Est MH', data:dates.map(d=>dateMap.get(d).est), borderColor:HP.gold, backgroundColor:'rgba(212,177,68,0.2)', tension:0.3, fill:true, pointRadius:3},
+      {label:'Actual MH', data:dates.map(d=>dateMap.get(d).act), borderColor:HP.red2, backgroundColor:'rgba(160,44,44,0.2)', tension:0.3, fill:true, pointRadius:3}
+    ]},
+    options:{...baseChartOpts}
+  });
+
+  // Ontime
+  makeChart('chartOntime',{
+    type:'doughnut',
+    data:{labels:['On-time','Overdue','No data'], datasets:[{data:[ontime,overdue,FILTERED.length-ontime-overdue], backgroundColor:[HP.green2, HP.danger, HP.mute], borderColor:'#15121F'}]},
+    options:{responsive:true, maintainAspectRatio:false, plugins:baseChartOpts.plugins, cutout:'60%'}
+  });
+
+  // Eff scatter (Est vs Actual)
+  const points = FILTERED.filter(r=>r.EstMH>0 && r.ActMH>0).map(r=>({x:r.EstMH, y:r.ActMH, name:r.Task}));
+  makeChart('chartEffi',{
+    type:'scatter',
+    data:{datasets:[{label:'Tasks', data:points, backgroundColor:HP.gold, borderColor:HP.goldB, pointRadius:5}]},
+    options:{...baseChartOpts, plugins:{...baseChartOpts.plugins,
+      tooltip:{...baseChartOpts.plugins.tooltip, callbacks:{label:(c)=>`${c.raw.name}: est=${c.raw.x}h, act=${c.raw.y}h`}}
+    },
+    scales:{
+      x:{...baseChartOpts.scales.x, title:{display:true,text:'Estimated MH', color:HP.dim}},
+      y:{...baseChartOpts.scales.y, title:{display:true,text:'Actual MH', color:HP.dim}}
+    }}
+  });
+
+  // Task Type Mix
+  const ttMap = groupBy(FILTERED, r=>r.TaskType||'Other');
+  const tt = Array.from(ttMap.entries()).map(([k,v])=>({k, count:v.length, est:sumEst(v)})).sort((a,b)=>b.est-a.est);
+  makeChart('chartTaskTypeMix',{
+    type:'polarArea',
+    data:{labels:tt.map(t=>t.k), datasets:[{data:tt.map(t=>t.est), backgroundColor:tt.map((_,i)=>PALETTE[i%PALETTE.length]+'CC')}]},
+    options:{responsive:true, maintainAspectRatio:false, plugins:baseChartOpts.plugins,
+      scales:{r:{ticks:{color:HP.dim, backdropColor:'transparent'}, grid:{color:'rgba(58,47,74,0.4)'}, angleLines:{color:'rgba(58,47,74,0.4)'}}}
+    }
+  });
+
+  // Scorecard
+  const owners2 = ownerSummary(FILTERED).filter(o=>o.owner!=='(Unassigned)');
+  $('#tableScorecard tbody').innerHTML = owners2.map((o,i)=>{
+    const ws = o.ws;
+    return `<tr>
+      <td>${i+1}</td>
+      <td><b>${o.owner}</b></td>
+      <td>${o.squad||'-'}</td>
+      <td>${o.tasks}</td>
+      <td>${o.done}</td>
+      <td>${o.doing}</td>
+      <td>${o.hold}</td>
+      <td>${o.est.toFixed(1)}</td>
+      <td>${o.act.toFixed(1)}</td>
+      <td>${o.util.toFixed(0)}%</td>
+      <td><span class="chip ${ws.cls.replace('wl-','')}" style="color:${ws.color};border-color:${ws.color};background:${ws.color}22">${ws.label}</span></td>
+    </tr>`;
+  }).join('');
+}
+
+/* House crest SVG generators */
+const HOUSE_CRESTS = {
+  s1: { name:'Gryffindor', animal:'🦁', color:'#7A0F0E', accent:'#D4B144', trait:'Brave · Bold' },
+  s2: { name:'Slytherin',  animal:'🐍', color:'#1E4A2C', accent:'#B8B8B8', trait:'Cunning · Resourceful' },
+  s3: { name:'Ravenclaw',  animal:'🦅', color:'#243763', accent:'#B8741A', trait:'Wise · Witty' },
+  s4: { name:'Hufflepuff', animal:'🦡', color:'#D4B144', accent:'#1A1208', trait:'Loyal · Patient' },
+};
+function houseCrestSVG(cls){
+  const h = HOUSE_CRESTS[cls];
+  if(!h) return '';
+  return `<svg class="house-crest" viewBox="0 0 60 72" xmlns="http://www.w3.org/2000/svg">
+    <defs>
+      <linearGradient id="g-${cls}" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0%" stop-color="${h.color}" stop-opacity="0.95"/>
+        <stop offset="100%" stop-color="${h.color}" stop-opacity="0.7"/>
+      </linearGradient>
+    </defs>
+    <path d="M 30 4 L 54 10 L 54 38 Q 54 56 30 68 Q 6 56 6 38 L 6 10 Z" fill="url(#g-${cls})" stroke="${h.accent}" stroke-width="1.5"/>
+    <path d="M 30 8 L 50 13 L 50 38 Q 50 53 30 64 Q 10 53 10 38 L 10 13 Z" fill="none" stroke="${h.accent}" stroke-width="0.5" stroke-dasharray="2 1.5" opacity="0.6"/>
+    <text x="30" y="40" text-anchor="middle" font-size="22" dominant-baseline="middle">${h.animal}</text>
+    <text x="30" y="58" text-anchor="middle" font-family="Cinzel,serif" font-size="6" fill="${h.accent}" font-weight="700">${h.name.toUpperCase()}</text>
+  </svg>`;
+}
+
+/* ---------- SQUAD VIEW ---------- */
+function renderSquad(){
+  const squads = uniq(FILTERED.map(r=>r.Squad)).filter(Boolean).sort();
+  const banners = $('#squadBanners');
+  banners.innerHTML = '';
+  squads.forEach((s,i)=>{
+    const rows = FILTERED.filter(r=>r.Squad===s);
+    const tasks = rows.length;
+    const est = sumEst(rows);
+    const owners = uniq(rows.map(r=>r.Owner)).filter(Boolean);
+    const clients = uniq(rows.map(r=>r.Client)).filter(Boolean);
+    const cls = `s${(i%4)+1}`;
+    const house = HOUSE_CRESTS[cls];
+    banners.innerHTML += `<div class="squad-banner ${cls}">
+      ${houseCrestSVG(cls)}
+      <div style="flex:1">
+        <h3>${s} <span style="font-size:11px;color:var(--hp-text-dim);font-weight:400;letter-spacing:1px">— ${house.name}</span></h3>
+        <small style="color:${house.accent}">${house.trait}</small>
+        <div style="font-size:11px;color:var(--hp-text-dim);margin-top:4px">${tasks} tasks · ${est.toFixed(1)}h · ${owners.length} people · ${clients.length} clients</div>
+        <div style="margin-top:8px">${owners.map(o=>`<span class="chip gray" style="margin-right:4px">${o}</span>`).join('')}</div>
+      </div>
+    </div>`;
+  });
+
+  // Squad tasks chart
+  const sCounts = squads.map(s=>FILTERED.filter(r=>r.Squad===s).length);
+  makeChart('chartSquadTasks',{
+    type:'bar',
+    data:{labels:squads, datasets:[{label:'Tasks', data:sCounts, backgroundColor:[HP.red,HP.green,HP.blue,HP.mustard], borderRadius:6}]},
+    options:{...baseChartOpts}
+  });
+
+  const sEst = squads.map(s=>sumEst(FILTERED.filter(r=>r.Squad===s)));
+  const sAct = squads.map(s=>sumAct(FILTERED.filter(r=>r.Squad===s)));
+  makeChart('chartSquadMh',{
+    type:'bar',
+    data:{labels:squads, datasets:[
+      {label:'Est MH', data:sEst, backgroundColor:HP.gold, borderRadius:6},
+      {label:'Act MH', data:sAct, backgroundColor:HP.red2, borderRadius:6},
+    ]},
+    options:{...baseChartOpts}
+  });
+
+  // squad x status table
+  const statuses = ['Doing','Hold','Client Review','Client Approved','Done',''];
+  let html = `<thead><tr><th>Squad</th>${statuses.map(s=>`<th>${s||'Backlog'}</th>`).join('')}<th>Total</th></tr></thead><tbody>`;
+  squads.forEach(s=>{
+    const rows = FILTERED.filter(r=>r.Squad===s);
+    html += `<tr><td><b>${s}</b></td>`;
+    statuses.forEach(st=>{
+      const cnt = rows.filter(r=>r.Status===st).length;
+      html += `<td style="text-align:center">${cnt||'-'}</td>`;
+    });
+    html += `<td style="text-align:center"><b>${rows.length}</b></td></tr>`;
+  });
+  html += `</tbody>`;
+  $('#tableSquadStatus').innerHTML = html;
+
+  // members workload per squad
+  const sm = $('#squadMembers'); sm.innerHTML='';
+  squads.forEach(s=>{
+    const rows = FILTERED.filter(r=>r.Squad===s);
+    const owners = ownerSummary(rows).filter(o=>o.owner!=='(Unassigned)');
+    let inner = `<div class="panel"><div class="panel-title">${s}</div>`;
+    if(owners.length===0) inner += `<div class="empty">— no people —</div>`;
+    owners.forEach(o=>{
+      const w = Math.min(o.util, 200);
+      inner += `<div class="person-card" style="margin-bottom:10px">
+        <div style="display:flex;justify-content:space-between;align-items:flex-end">
+          <div><div class="name">${o.owner}</div><div class="role">${o.tasks} tasks · ${o.est.toFixed(1)}h est</div></div>
+          <div style="text-align:right"><b style="color:${o.ws.color};font-family:'Cinzel',serif">${o.util.toFixed(0)}%</b><div style="font-size:10px;color:var(--hp-text-dim)">${o.ws.label}</div></div>
+        </div>
+        <div class="workload-bar"><span class="${o.ws.cls}" style="width:${Math.min(o.util,100)}%"></span></div>
+      </div>`;
+    });
+    inner += `</div>`;
+    sm.innerHTML += inner;
+  });
+}
+
+/* ---------- INDIVIDUAL ---------- */
+let SELECTED_PERSON = null;
+function renderIndividual(){
+  const owners = ownerSummary(FILTERED).filter(o=>o.owner!=='(Unassigned)');
+  const picker = $('#personPicker');
+  picker.innerHTML = owners.map(o=>{
+    const active = SELECTED_PERSON===o.owner?'border-color:var(--hp-gold);background:rgba(212,177,68,0.1)':'';
+    return `<div class="person-card" data-person="${o.owner}" style="cursor:pointer;${active}">
+      <div class="name">${o.owner}</div>
+      <div class="role">${o.squad} · ${o.tasks} tasks</div>
+      <div class="workload-bar"><span class="${o.ws.cls}" style="width:${Math.min(o.util,100)}%"></span></div>
+      <div class="person-stats"><span>${o.est.toFixed(0)}h</span><span><b>${o.util.toFixed(0)}%</b></span></div>
+    </div>`;
+  }).join('');
+  picker.querySelectorAll('[data-person]').forEach(el=>{
+    el.addEventListener('click', ()=>{ SELECTED_PERSON = el.dataset.person; renderIndividual(); });
+  });
+
+  if(!SELECTED_PERSON && owners.length) SELECTED_PERSON = owners[0].owner;
+  if(!SELECTED_PERSON){ $('#personDetail').innerHTML = `<div class="panel"><div class="empty">— ไม่มี data ของบุคคล —</div></div>`; return; }
+
+  const person = owners.find(o=>o.owner===SELECTED_PERSON);
+  if(!person){ $('#personDetail').innerHTML = `<div class="panel"><div class="empty">— ไม่พบข้อมูล —</div></div>`; return; }
+  const rows = person.rows;
+  const taskTypeMap = groupBy(rows, r=>r.TaskType||'-');
+  const tts = Array.from(taskTypeMap.entries()).map(([k,v])=>({k, count:v.length, est:sumEst(v)})).sort((a,b)=>b.count-a.count);
+  const clientMap = groupBy(rows, r=>r.Client);
+  const clients = Array.from(clientMap.entries()).map(([k,v])=>({k,count:v.length,est:sumEst(v)})).sort((a,b)=>b.count-a.count);
+
+  const ws = person.ws;
+
+  $('#personDetail').innerHTML = `
+    <div class="row cols-3" style="grid-template-columns:1fr 1fr 1fr">
+      <div class="kpi-card gryff"><div class="kpi-label">Tasks</div><div class="kpi-value">${person.tasks}</div><div class="kpi-sub">งานทั้งหมด</div></div>
+      <div class="kpi-card huff"><div class="kpi-label">Workload</div><div class="kpi-value">${person.est.toFixed(1)}h</div><div class="kpi-sub">เต็ม ${FULL_MH_PER_MONTH}h/เดือน</div></div>
+      <div class="kpi-card slyth"><div class="kpi-label">Utilization</div><div class="kpi-value" style="color:${ws.color}">${person.util.toFixed(0)}%</div><div class="kpi-sub">${ws.advice}</div></div>
+    </div>
+    <div class="row cols-2-1">
+      <div class="panel">
+        <div class="panel-title">${person.owner} — Task Type Breakdown</div>
+        <div class="chart-wrap">
+          <canvas id="chartPersonType"></canvas>
+        </div>
+      </div>
+      <div class="panel">
+        <div class="panel-title">Client Mix</div>
+        <div class="chart-wrap"><canvas id="chartPersonClient"></canvas></div>
+      </div>
+    </div>
+    <div class="row cols-2">
+      <div class="panel">
+        <div class="panel-title">Status Breakdown</div>
+        <div class="chart-wrap short"><canvas id="chartPersonStatus"></canvas></div>
+      </div>
+      <div class="panel">
+        <div class="panel-title">Workload Indicator</div>
+        <div style="padding:14px 4px">
+          <div style="display:flex;justify-content:space-between;font-size:12px;color:var(--hp-text-dim)">
+            <span>Workload</span><b style="color:${ws.color}">${person.util.toFixed(0)}% — ${ws.label}</b>
+          </div>
+          <div class="workload-bar" style="height:14px;margin-top:8px"><span class="${ws.cls}" style="width:${Math.min(person.util,100)}%"></span></div>
+          <div style="display:flex;justify-content:space-between;font-size:10px;color:var(--hp-text-mute);margin-top:6px">
+            <span>0%</span><span>80% OK</span><span>100% Full</span><span>120% Crisis</span>
+          </div>
+          <div style="margin-top:18px;padding:10px;border:1px solid var(--hp-border);border-radius:8px;background:rgba(20,16,28,0.5)">
+            <div style="font-family:'Cinzel',serif;font-size:11px;color:var(--hp-gold);letter-spacing:1px;margin-bottom:4px">RECOMMENDATION</div>
+            <div style="font-size:13px;color:var(--hp-text)">${recommendation(person)}</div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="panel">
+      <div class="panel-title">Task List ของ ${person.owner}</div>
+      <div class="table-wrap scrollbar" style="max-height:480px">
+        <table><thead><tr>
+          <th>Task</th><th>Client</th><th>Type</th><th>Squad</th><th>Priority</th><th>Complexity</th><th>Status</th><th>Est</th><th>Act</th><th>Diff</th>
+        </tr></thead><tbody>
+          ${rows.map(r=>`<tr>
+            <td>${r.Task}</td><td>${r.Client}</td><td>${r.TaskType}</td><td>${r.Squad}</td>
+            <td>${priorityChip(r.Priority)}</td><td>${r.Complexity||'-'}</td>
+            <td>${statusChip(r.Status)}</td><td>${r.EstMH}</td><td>${r.ActMH||'-'}</td>
+            <td style="color:${(r.Diff!==null&&r.Diff<0)?'#FFB4B4':HP.text}">${r.Diff??'-'}</td>
+          </tr>`).join('')}
+        </tbody></table>
+      </div>
+    </div>
+  `;
+
+  // person charts
+  makeChart('chartPersonType',{
+    type:'bar',
+    data:{labels:tts.map(t=>t.k), datasets:[
+      {label:'Tasks', data:tts.map(t=>t.count), backgroundColor:HP.gold, borderRadius:6},
+      {label:'Est MH', data:tts.map(t=>t.est), backgroundColor:HP.red2, borderRadius:6}
+    ]},
+    options:{...baseChartOpts}
+  });
+  makeChart('chartPersonClient',{
+    type:'doughnut',
+    data:{labels:clients.map(c=>c.k), datasets:[{data:clients.map(c=>c.count), backgroundColor:clients.map((_,i)=>PALETTE[i%PALETTE.length])}]},
+    options:{responsive:true, maintainAspectRatio:false, plugins:baseChartOpts.plugins, cutout:'58%'}
+  });
+  makeChart('chartPersonStatus',{
+    type:'bar',
+    data:{labels:['Done','Approved','Doing','Review','Hold','Backlog'], datasets:[{label:'Tasks',
+      data:[person.done, person.approved, person.doing, person.review, person.hold, person.tasks-(person.done+person.approved+person.doing+person.review+person.hold)],
+      backgroundColor:[HP.success,HP.green2,HP.blue,HP.gold,HP.red2,HP.mute], borderRadius:6}]},
+    options:{...baseChartOpts}
+  });
+}
+function recommendation(p){
+  if(p.util>120) return `${p.owner} กำลังโอเวอร์โหลด — แนะนำให้ลด task ลงทันที หรือ reassign บางส่วนไปคนที่ workload < 80%`;
+  if(p.util>100) return `${p.owner} เริ่มทำงานเกินกำลัง — เฝ้าระวังคุณภาพและสุขภาพ`;
+  if(p.util>=80) return `Workload กำลังพอเหมาะ — รักษาจังหวะแบบนี้ไว้`;
+  if(p.util>0) return `${p.owner} ยังว่าง — สามารถ assign งานเพิ่มได้อีก ${(FULL_MH_PER_MONTH-p.est).toFixed(1)} ชั่วโมง`;
+  return `ไม่มีข้อมูล workload — ตรวจสอบว่า task ถูก assign หรือยัง`;
+}
+
+/* ---------- INSIGHTS ---------- */
+function renderInsights(){
+  const total = FILTERED.length;
+  const owners = ownerSummary(FILTERED).filter(o=>o.owner!=='(Unassigned)');
+  const overloaded = owners.filter(o=>o.util>120);
+  const overloading = owners.filter(o=>o.util>100 && o.util<=120);
+  const free = owners.filter(o=>o.util<80);
+  const ok = owners.filter(o=>o.util>=80 && o.util<=100);
+  const hold = FILTERED.filter(r=>r.Status==='Hold').length;
+  const overdue = FILTERED.filter(r=>r.Diff!==null && r.Diff<0).length;
+  const done = FILTERED.filter(r=>r.Status==='Done'||r.Status==='Client Approved').length;
+
+  $('#executiveSummary').innerHTML = `
+    <div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(160px, 1fr));gap:10px">
+      <div class="kpi-card gryff" style="padding:12px"><div class="kpi-label">Total</div><div class="kpi-value" style="font-size:22px">${total}</div></div>
+      <div class="kpi-card slyth" style="padding:12px"><div class="kpi-label">Done</div><div class="kpi-value" style="font-size:22px">${done}</div></div>
+      <div class="kpi-card huff" style="padding:12px"><div class="kpi-label">Hold</div><div class="kpi-value" style="font-size:22px">${hold}</div></div>
+      <div class="kpi-card raven" style="padding:12px"><div class="kpi-label">Overdue</div><div class="kpi-value" style="font-size:22px">${overdue}</div></div>
+      <div class="kpi-card gryff" style="padding:12px"><div class="kpi-label">Overload People</div><div class="kpi-value" style="font-size:22px;color:#FFB4B4">${overloaded.length}</div></div>
+      <div class="kpi-card slyth" style="padding:12px"><div class="kpi-label">Free People</div><div class="kpi-value" style="font-size:22px;color:#A8C5FF">${free.length}</div></div>
+    </div>
+    <div style="margin-top:14px;padding:12px;border:1px solid var(--hp-border);border-radius:8px;background:rgba(20,16,28,0.5);font-size:13px;line-height:1.7">
+      <b style="color:var(--hp-gold);font-family:'Cinzel',serif">SUMMARY: </b>
+      ภาพรวมเดือนนี้มีงาน <b>${total}</b> task รวม estimated <b>${sumEst(FILTERED).toFixed(1)}h</b>
+      ทีมประกอบด้วย <b>${owners.length}</b> คน แบ่งเป็น
+      Free <b style="color:#A8C5FF">${free.length}</b>,
+      OK <b style="color:#94C8A6">${ok.length}</b>,
+      Overloading <b style="color:#FFD27A">${overloading.length}</b>,
+      Crisis <b style="color:#FFB4B4">${overloaded.length}</b>
+      ${overloaded.length?` <br/>⚠️ ต้องลงไปช่วย: <b>${overloaded.map(o=>o.owner).join(', ')}</b>`:''}
+      ${free.length?` <br/>💡 มีคนว่าง สามารถรับงานเพิ่ม: <b>${free.map(o=>`${o.owner} (${o.util.toFixed(0)}%)`).join(', ')}</b>`:''}
+    </div>
+  `;
+
+  // Crisis insight cards
+  const crisisCards = [];
+  if(overloaded.length){
+    crisisCards.push(insightCard('crisis', '🔥 Crisis: Overloaded People',
+      `<ul class="insight-list">${overloaded.map(o=>`<li><b>${o.owner}</b> (${o.squad})<span style="color:#FFB4B4">${o.util.toFixed(0)}% · ${o.est.toFixed(1)}h</span></li>`).join('')}</ul>
+       <p style="margin-top:10px;font-size:12px;color:var(--hp-text-dim)">ต้อง reassign งานออกจากคนเหล่านี้ทันที</p>`));
+  }
+  if(hold>0){
+    const holdRows = FILTERED.filter(r=>r.Status==='Hold').slice(0,8);
+    crisisCards.push(insightCard('warning', '⏸️ Tasks on Hold',
+      `<ul class="insight-list">${holdRows.map(r=>`<li><b>${r.Task}</b><span>${r.Owner||'-'}</span></li>`).join('')}</ul>
+       <p style="margin-top:10px;font-size:12px;color:var(--hp-text-dim)">${hold} งานถูก Hold รอตรวจสอบเหตุผล</p>`));
+  }
+  if(overdue>0){
+    const overdueRows = FILTERED.filter(r=>r.Diff!==null && r.Diff<0).sort((a,b)=>a.Diff-b.Diff).slice(0,8);
+    crisisCards.push(insightCard('crisis', '⏰ Overdue Tasks',
+      `<ul class="insight-list">${overdueRows.map(r=>`<li><b>${r.Task}</b><span style="color:#FFB4B4">${r.Diff}d</span></li>`).join('')}</ul>
+       <p style="margin-top:10px;font-size:12px;color:var(--hp-text-dim)">${overdue} งานเลยกำหนด</p>`));
+  }
+  const urgentTasks = FILTERED.filter(r=>r.Priority==='ด่วนที่สุด' && r.Status!=='Done' && r.Status!=='Client Approved');
+  if(urgentTasks.length){
+    crisisCards.push(insightCard('warning', '🚨 ด่วนที่สุด — ยังไม่ปิด',
+      `<ul class="insight-list">${urgentTasks.slice(0,8).map(r=>`<li><b>${r.Task}</b><span>${r.Owner||'-'}</span></li>`).join('')}</ul>
+       <p style="margin-top:10px;font-size:12px;color:var(--hp-text-dim)">${urgentTasks.length} งานด่วนที่สุดยังไม่ closed</p>`));
+  }
+  $('#insightCrisis').innerHTML = crisisCards.length?crisisCards.join(''):'<div class="empty">✨ ไม่มี Crisis — ทีมโอเค</div>';
+
+  // Heroes
+  const heroCards = [];
+  const closedByOwner = ownerSummary(FILTERED).filter(o=>o.done+o.approved>0).sort((a,b)=>(b.done+b.approved)-(a.done+a.approved));
+  if(closedByOwner.length){
+    heroCards.push(insightCard('hero', '🏆 Top Closer',
+      `<ul class="insight-list">${closedByOwner.slice(0,6).map(o=>`<li><b>${o.owner}</b><span style="color:#94C8A6">${o.done+o.approved} closed</span></li>`).join('')}</ul>
+       <p style="margin-top:10px;font-size:12px;color:var(--hp-text-dim)">คนที่ปิดงานได้มากที่สุด</p>`));
+  }
+  if(ok.length){
+    heroCards.push(insightCard('hero', '✅ Sweet Spot Workload (80–100%)',
+      `<ul class="insight-list">${ok.map(o=>`<li><b>${o.owner}</b><span style="color:#94C8A6">${o.util.toFixed(0)}%</span></li>`).join('')}</ul>
+       <p style="margin-top:10px;font-size:12px;color:var(--hp-text-dim)">คนที่ workload กำลังเหมาะที่สุด — เป็น role model</p>`));
+  }
+  // High volume client
+  const cMap = groupBy(FILTERED, r=>r.Client);
+  const cs = Array.from(cMap.entries()).map(([c,rows])=>({c,n:rows.length,e:sumEst(rows)})).sort((a,b)=>b.n-a.n);
+  if(cs.length){
+    heroCards.push(insightCard('info', '💎 Top Volume Clients',
+      `<ul class="insight-list">${cs.slice(0,6).map(c=>`<li><b>${c.c}</b><span>${c.n} tasks · ${c.e.toFixed(1)}h</span></li>`).join('')}</ul>
+       <p style="margin-top:10px;font-size:12px;color:var(--hp-text-dim)">ลูกค้าหลักที่สร้าง workload เยอะที่สุด</p>`));
+  }
+  $('#insightHero').innerHTML = heroCards.join('');
+
+  // Recommendations
+  const rec = [];
+  // 1. Rebalance suggestions
+  if(overloaded.length && free.length){
+    const fromTo = overloaded.map(o=>{
+      const target = free[0];
+      return `<li>📤 <b>${o.owner}</b> (${o.util.toFixed(0)}%) → <b>${target.owner}</b> (${target.util.toFixed(0)}%)</li>`;
+    }).join('');
+    rec.push(insightCard('warning','🔁 Workload Rebalancing',
+      `<ul class="insight-list">${fromTo}</ul>
+       <p style="margin-top:10px;font-size:12px;color:var(--hp-text-dim)">โยกงานจากคนที่ overload ไปคนที่ free เพื่อบาลานซ์</p>`));
+  }
+
+  // 2. Skill/role suggestion
+  const taskByOwner = ownerSummary(FILTERED);
+  const specializations = taskByOwner.map(o=>{
+    const tt = groupBy(o.rows, r=>r.TaskType||'-');
+    let top='-'; let max=0;
+    tt.forEach((rows,k)=>{ if(rows.length>max){max=rows.length;top=k} });
+    return `<li><b>${o.owner}</b><span>${top} (${max})</span></li>`;
+  }).join('');
+  rec.push(insightCard('info','🎯 Specialization Map',
+    `<ul class="insight-list">${specializations}</ul>
+     <p style="margin-top:10px;font-size:12px;color:var(--hp-text-dim)">คนที่ทำ task type ใดมากที่สุด — ใช้สำหรับวางแผนพัฒนา skill</p>`));
+
+  // 3. Process improvement
+  const noDate = FILTERED.filter(r=>!r.DoDate).length;
+  const noPriority = FILTERED.filter(r=>!r.Priority).length;
+  const noComplexity = FILTERED.filter(r=>!r.Complexity).length;
+  rec.push(insightCard('warning','⚙️ Data Quality',
+    `<ul class="insight-list">
+      <li>Tasks without Do Date<b>${noDate}</b></li>
+      <li>Tasks without Priority<b>${noPriority}</b></li>
+      <li>Tasks without Complexity<b>${noComplexity}</b></li>
+     </ul>
+     <p style="margin-top:10px;font-size:12px;color:var(--hp-text-dim)">การเติม metadata ให้ครบจะช่วยให้วิเคราะห์ KPI ได้แม่นยำขึ้น</p>`));
+
+  // 4. Client risk
+  const clientCrisis = cs.filter(c=>{
+    const rows = FILTERED.filter(r=>r.Client===c.c);
+    const holdN = rows.filter(r=>r.Status==='Hold').length;
+    return holdN>=2;
+  });
+  if(clientCrisis.length){
+    rec.push(insightCard('crisis','⚠️ Client Risk',
+      `<ul class="insight-list">${clientCrisis.slice(0,6).map(c=>{
+        const rows = FILTERED.filter(r=>r.Client===c.c);
+        const holdN = rows.filter(r=>r.Status==='Hold').length;
+        return `<li><b>${c.c}</b><span style="color:#FFB4B4">${holdN} hold</span></li>`;
+      }).join('')}</ul>
+       <p style="margin-top:10px;font-size:12px;color:var(--hp-text-dim)">ลูกค้าที่มีงาน Hold เยอะ ต้อง follow-up ทันที</p>`));
+  }
+
+  // 5. Team development
+  const teamDev = `
+    <p style="font-size:13px;line-height:1.7;color:var(--hp-text)">
+      <b style="color:var(--hp-gold)">พัฒนาคน:</b> โฟกัสที่คน Workload < 80% ให้ฝึก skill ใหม่<br/>
+      <b style="color:var(--hp-gold)">พัฒนาทีม:</b> Squad ที่มีงานเยอะให้พิจารณา balance ระหว่าง squad<br/>
+      <b style="color:var(--hp-gold)">พัฒนางาน:</b> ตรวจสอบ task ที่ Hold > 3 วัน เพื่อหาสาเหตุระบบ
+    </p>
+  `;
+  rec.push(insightCard('hero','🪄 Development Path', teamDev));
+
+  $('#insightReco').innerHTML = rec.join('');
+
+  // KPI snapshot table
+  $('#tableKpiSnapshot tbody').innerHTML = owners.map(o=>{
+    const tt = groupBy(o.rows, r=>r.TaskType||'-');
+    let top='-'; let max=0;
+    tt.forEach((rows,k)=>{ if(rows.length>max){max=rows.length;top=k} });
+    const watch = o.hold>0?`${o.hold} hold`:o.util>120?'overload':o.util<80?'underused':'balanced';
+    return `<tr>
+      <td><b>${o.owner}</b></td>
+      <td>${o.tasks}</td>
+      <td>${o.est.toFixed(1)}h</td>
+      <td><span style="color:${o.ws.color}">${o.util.toFixed(0)}%</span></td>
+      <td><span class="chip ${o.ws.cls.replace('wl-','')}" style="color:${o.ws.color};border-color:${o.ws.color};background:${o.ws.color}22">${o.ws.label}</span></td>
+      <td>${top}</td>
+      <td>${watch}</td>
+    </tr>`;
+  }).join('');
+}
+
+function insightCard(type,title,body){
+  return `<div class="insight-card ${type}">
+    <div class="insight-title">${title}</div>
+    <div class="insight-body">${body}</div>
+  </div>`;
+}
+
+/* ============================
+   NAVIGATION + MENU TOGGLE
+============================ */
+$$('.nav-item').forEach(item=>{
+  item.addEventListener('click', ()=>{
+    $$('.nav-item').forEach(i=>i.classList.remove('active'));
+    item.classList.add('active');
+    const page = item.dataset.page;
+    $$('.page').forEach(p=>p.classList.remove('active'));
+    const target = $(`#page-${page}`); if(target) target.classList.add('active');
+    window.scrollTo({top:0, behavior:'smooth'});
+    // close sidebar on mobile
+    if(window.innerWidth <= 900){ $('#sidebar').classList.remove('open'); }
+    // resize charts after page switch (chart.js needs visible parent)
+    setTimeout(()=>{ Object.values(CHARTS).forEach(c=>{try{c.resize()}catch(e){}}); }, 50);
+  });
+});
+
+const menuToggle = $('#menuToggle');
+if(menuToggle){
+  menuToggle.addEventListener('click', ()=>{
+    $('#sidebar').classList.toggle('open');
+  });
+}
+
+// Close sidebar when clicking outside on mobile
+document.addEventListener('click', e=>{
+  if(window.innerWidth > 900) return;
+  const sb = $('#sidebar'); const tg = $('#menuToggle');
+  if(!sb || !tg) return;
+  if(!sb.contains(e.target) && !tg.contains(e.target) && sb.classList.contains('open')){
+    sb.classList.remove('open');
+  }
+});
+
+// Resize charts on window resize (debounced)
+let resizeTimer;
+window.addEventListener('resize', ()=>{
+  clearTimeout(resizeTimer);
+  resizeTimer = setTimeout(()=>{
+    Object.values(CHARTS).forEach(c=>{try{c.resize()}catch(e){}});
+  }, 200);
+});
+
+/* ============================
+   DATA SOURCE TRACKING + LOCAL STORAGE
+============================ */
+const STORAGE_KEY = 'tps_dashboard_v1';
+let SOURCES = []; // [{name, rows, clients:[], loadedAt}]
+
+function saveToStorage(){
+  try{
+    const payload = { sources: SOURCES };
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(payload));
+  }catch(e){console.warn('Storage save failed:', e);}
+}
+function loadFromStorage(){
+  try{
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if(!raw) return null;
+    return JSON.parse(raw);
+  }catch(e){return null;}
+}
+function rebuildRawFromSources(){
+  RAW = [];
+  SOURCES.forEach(s => RAW = RAW.concat(s.rows));
+}
+function renderDataSourcesPanel(){
+  const panel = $('#dataSourcesPanel');
+  if(!panel) return;
+  if(SOURCES.length === 0){
+    panel.innerHTML = `<div style="text-align:center;font-size:10px;color:var(--hp-text-mute);padding:8px">— ไม่มี Data Source —</div>`;
+    return;
+  }
+  const totalRows = SOURCES.reduce((s,x)=>s+x.rows.length,0);
+  const allClients = new Set();
+  SOURCES.forEach(s => s.clients.forEach(c => allClients.add(c)));
+
+  let html = `<div style="font-family:'Cinzel',serif;font-size:10px;color:var(--hp-gold);letter-spacing:1px;margin-bottom:6px;display:flex;justify-content:space-between">
+    <span>SOURCES (${SOURCES.length})</span>
+    <span style="color:var(--hp-text-dim)">${allClients.size} clients · ${totalRows} rows</span>
+  </div>`;
+  SOURCES.forEach((s,i)=>{
+    html += `<div style="display:flex;justify-content:space-between;align-items:center;font-size:11px;padding:4px 6px;border-radius:4px;margin-bottom:3px;background:rgba(212,177,68,0.05);border:1px solid rgba(58,47,74,0.5)">
+      <div style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1">
+        <div style="color:var(--hp-text)">${s.name}</div>
+        <div style="font-size:9px;color:var(--hp-text-mute)">${s.clients.join(', ')||'—'} · ${s.rows.length} rows</div>
+      </div>
+      <button data-srcidx="${i}" class="src-remove" title="Remove" style="background:transparent;border:1px solid var(--hp-red-2);color:var(--hp-red-2);border-radius:4px;width:22px;height:22px;cursor:pointer;font-size:11px;flex-shrink:0;margin-left:6px">✕</button>
+    </div>`;
+  });
+  html += `<button id="clearAllSources" style="margin-top:6px;width:100%;padding:5px;font-size:10px;background:transparent;border:1px solid var(--hp-border);color:var(--hp-text-dim);border-radius:4px;cursor:pointer;font-family:'Cinzel',serif;letter-spacing:1px">CLEAR ALL</button>`;
+  panel.innerHTML = html;
+
+  panel.querySelectorAll('.src-remove').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      const idx = +btn.dataset.srcidx;
+      const removed = SOURCES.splice(idx,1);
+      rebuildRawFromSources();
+      saveToStorage();
+      renderDataSourcesPanel();
+      renderFilters();
+      applyFilters();
+      toast(`✕ Removed ${removed[0].name}`);
+    });
+  });
+  const clearBtn = $('#clearAllSources');
+  if(clearBtn) clearBtn.addEventListener('click', ()=>{
+    if(!confirm('ลบ Data Sources ทั้งหมดที่อัปโหลดมา?')) return;
+    SOURCES = [];
+    rebuildRawFromSources();
+    saveToStorage();
+    renderDataSourcesPanel();
+    renderFilters();
+    applyFilters();
+    toast('↺ Cleared all sources');
+  });
+}
+
+/* ============================
+   CSV UPLOAD (APPEND or REPLACE)
+============================ */
+$('#csvUpload').addEventListener('change', async (e)=>{
+  const files = Array.from(e.target.files);
+  if(!files.length) return;
+  const mode = (document.querySelector('input[name="uploadMode"]:checked')||{}).value || 'append';
+
+  if(mode==='replace'){
+    SOURCES = [];
+  }
+
+  let added = 0;
+  for(const f of files){
+    try{
+      const text = await f.text();
+      const rows = parseCSV(text);
+      if(rows.length === 0) continue;
+      const clients = uniq(rows.map(r=>r.Client));
+      // de-duplicate by file name + client
+      const existingIdx = SOURCES.findIndex(s => s.name === f.name);
+      if(existingIdx >= 0){
+        SOURCES[existingIdx] = { name:f.name, rows, clients, loadedAt:Date.now() };
+      } else {
+        SOURCES.push({ name:f.name, rows, clients, loadedAt:Date.now() });
+      }
+      added++;
+    } catch(err){
+      console.error('Failed to read', f.name, err);
+    }
+  }
+  rebuildRawFromSources();
+  saveToStorage();
+  renderDataSourcesPanel();
+  renderFilters();
+  applyFilters();
+  e.target.value = ''; // allow re-uploading same file
+  toast(`✓ ${mode==='append'?'Added':'Replaced with'} ${added} file(s) · Total ${SOURCES.length} sources · ${RAW.length} rows`);
+});
+
+/* ============================
+   RESET DATA
+============================ */
+$('#resetData').addEventListener('click', ()=>{
+  if(!confirm('Reset เป็นข้อมูล default? (จะลบ data sources ที่ upload เข้ามาด้วย)')) return;
+  SOURCES = [{name:'Default Data (built-in)', rows: parseCSV(DEFAULT_CSV), clients: [], loadedAt:Date.now()}];
+  SOURCES[0].clients = uniq(SOURCES[0].rows.map(r=>r.Client));
+  rebuildRawFromSources();
+  saveToStorage();
+  renderDataSourcesPanel();
+  applyFilters();
+  renderFilters();
+  toast('↻ Reset to default data');
+});
+
+/* ============================
+   PDF EXPORT
+============================ */
+async function exportPDF(){
+  const { jsPDF } = window.jspdf;
+  toast('⏳ Generating PDF...');
+  // Take screenshot of main content for current page only
+  const target = $('.page.active');
+  if(!target){ toast('Nothing to export'); return; }
+  // Make sure all charts render
+  await new Promise(r=>setTimeout(r,300));
+  const canvas = await html2canvas(target, {backgroundColor:'#0E0B16', scale:1.4, useCORS:true, logging:false});
+  const imgData = canvas.toDataURL('image/png');
+  const pdf = new jsPDF('p','mm','a4');
+  const pageW = pdf.internal.pageSize.getWidth();
+  const pageH = pdf.internal.pageSize.getHeight();
+  const imgW = pageW;
+  const imgH = (canvas.height * imgW) / canvas.width;
+  let heightLeft = imgH; let position = 0;
+  pdf.addImage(imgData, 'PNG', 0, position, imgW, imgH);
+  heightLeft -= pageH;
+  while(heightLeft > 0){
+    position = heightLeft - imgH;
+    pdf.addPage();
+    pdf.addImage(imgData, 'PNG', 0, position, imgW, imgH);
+    heightLeft -= pageH;
+  }
+  const today = new Date().toISOString().slice(0,10);
+  const pageName = $('.nav-item.active span:last-child').textContent.replace(/\s+/g,'_');
+  pdf.save(`TPS_Production_Dashboard_${pageName}_${today}.pdf`);
+  toast('✓ PDF saved');
+}
+$('#downloadPdf').addEventListener('click', exportPDF);
+$('#exportOverview').addEventListener('click', exportPDF);
+
+/* ============================
+   INIT
+============================ */
+function init(){
+  try{
+    const saved = loadFromStorage();
+    if(saved && saved.sources && saved.sources.length>0){
+      SOURCES = saved.sources;
+      rebuildRawFromSources();
+      console.log(`✓ Restored ${SOURCES.length} source(s) · ${RAW.length} rows from local storage`);
+    } else {
+      const defaultRows = parseCSV(DEFAULT_CSV);
+      SOURCES = [{name:'Default Data (built-in)', rows:defaultRows, clients:uniq(defaultRows.map(r=>r.Client)), loadedAt:Date.now()}];
+      rebuildRawFromSources();
+      console.log(`✓ Loaded default ${RAW.length} rows`);
+    }
+
+    if(!RAW || RAW.length===0){
+      document.body.insertAdjacentHTML('afterbegin','<div style="position:fixed;top:0;left:0;right:0;background:#A02C2C;color:#fff;padding:10px;z-index:9999;text-align:center;font-family:sans-serif">⚠️ Failed to parse CSV data. Check console.</div>');
+      return;
+    }
+    renderDataSourcesPanel();
+    renderFilters();
+    applyFilters();
+  } catch(e){
+    console.error('Init error:', e);
+    document.body.insertAdjacentHTML('afterbegin','<div style="position:fixed;top:0;left:0;right:0;background:#A02C2C;color:#fff;padding:10px;z-index:9999;text-align:center;font-family:sans-serif">⚠️ '+e.message+' — please check internet connection (CDN may be blocked)</div>');
+  }
+}
+// Wait until DOM and external scripts likely ready
+if(document.readyState === 'loading'){
+  document.addEventListener('DOMContentLoaded', ()=>setTimeout(init, 100));
+} else {
+  setTimeout(init, 100);
+}
+</script>
+</body>
+</html>
